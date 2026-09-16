@@ -1,0 +1,202 @@
+DN-WTA v3 family evaluation
+  split=test instances=dn_3x50_K10_s01.txt, dn_3x50_K10_s02.txt
+  policy=mappo (with per-step CPLEX reference) seeds=30 (base 42) timelimit=30s
+
+=== dn_3x50_K10_s01.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=3942) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.655919 +- 0.021728 | shots 17.0 | destroyed value 1356.4
+
+=== dn_3x50_K10_s02.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=3819) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.546862 +- 0.038968 | shots 18.0 | destroyed value 1730.5
+[cleanup] removed tmp dir /tmp/b4
+
+reports written: output/e24_mappo_eval/family_report.json, output/e24_mappo_eval/family_report.md
+family leak rate: 0.6014 +- 0.0545 [worst 0.6559]
+DN-WTA v3 family evaluation
+  split=train instances=dn_3x50_K10_s03.txt, dn_3x50_K10_s04.txt, dn_3x50_K10_s05.txt, dn_3x50_K10_s06.txt, dn_3x50_K10_s07.txt, dn_3x50_K10_s08.txt, dn_3x50_K10_s09.txt, dn_3x50_K10_s10.txt, dn_3x50_K10_s11.txt, dn_3x50_K10_s12.txt, dn_3x50_K10_s13.txt, dn_3x50_K10_s14.txt, dn_3x50_K10_s15.txt, dn_3x50_K10_s16.txt, dn_3x50_K10_s17.txt, dn_3x50_K10_s18.txt, dn_3x50_K10_s19.txt, dn_3x50_K10_s20.txt, dn_3x50_K10_s21.txt, dn_3x50_K10_s22.txt, dn_3x50_K10_s23.txt, dn_3x50_K10_s24.txt, dn_3x50_K10_s25.txt, dn_3x50_K10_s26.txt
+  policy=mappo seeds=30 (base 42) timelimit=30s
+
+=== dn_3x50_K10_s03.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4116) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.562399 +- 0.020834 | shots 18.0 | destroyed value 1801.2
+
+=== dn_3x50_K10_s04.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4203) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.633040 +- 0.031165 | shots 18.0 | destroyed value 1542.3
+
+=== dn_3x50_K10_s05.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4828) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.636986 +- 0.020000 | shots 18.0 | destroyed value 1752.6
+
+=== dn_3x50_K10_s06.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4126) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.635612 +- 0.035092 | shots 18.0 | destroyed value 1503.5
+
+=== dn_3x50_K10_s07.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4910) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.611331 +- 0.036459 | shots 18.0 | destroyed value 1908.4
+
+=== dn_3x50_K10_s08.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4385) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.540707 +- 0.028588 | shots 18.0 | destroyed value 2014.0
+
+=== dn_3x50_K10_s09.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4246) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.650675 +- 0.020885 | shots 17.0 | destroyed value 1483.2
+
+=== dn_3x50_K10_s10.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=5241) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.610469 +- 0.022954 | shots 17.0 | destroyed value 2041.5
+
+=== dn_3x50_K10_s11.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4367) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.616495 +- 0.036399 | shots 18.0 | destroyed value 1674.8
+
+=== dn_3x50_K10_s12.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=5051) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.621540 +- 0.018005 | shots 18.0 | destroyed value 1911.6
+
+=== dn_3x50_K10_s13.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4377) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.581936 +- 0.029904 | shots 18.0 | destroyed value 1829.9
+
+=== dn_3x50_K10_s14.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=3997) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.625661 +- 0.012738 | shots 18.0 | destroyed value 1496.2
+
+=== dn_3x50_K10_s15.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4154) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.634280 +- 0.022412 | shots 18.0 | destroyed value 1519.2
+
+=== dn_3x50_K10_s16.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4159) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.563132 +- 0.034882 | shots 18.0 | destroyed value 1816.9
+
+=== dn_3x50_K10_s17.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4312) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.633271 +- 0.015977 | shots 18.0 | destroyed value 1581.3
+
+=== dn_3x50_K10_s18.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4294) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.657413 +- 0.018455 | shots 18.0 | destroyed value 1471.1
+
+=== dn_3x50_K10_s19.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4236) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.551377 +- 0.031925 | shots 18.0 | destroyed value 1900.4
+
+=== dn_3x50_K10_s20.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=3766) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.556904 +- 0.025099 | shots 18.0 | destroyed value 1668.7
+
+=== dn_3x50_K10_s21.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=3743) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.585742 +- 0.027675 | shots 18.0 | destroyed value 1550.6
+
+=== dn_3x50_K10_s22.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4635) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.571730 +- 0.023368 | shots 18.0 | destroyed value 1985.0
+
+=== dn_3x50_K10_s23.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4764) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.617919 +- 0.033060 | shots 17.0 | destroyed value 1820.2
+
+=== dn_3x50_K10_s24.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4450) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.594869 +- 0.035083 | shots 18.0 | destroyed value 1802.8
+
+=== dn_3x50_K10_s25.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=3749) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.615168 +- 0.023597 | shots 18.0 | destroyed value 1442.7
+
+=== dn_3x50_K10_s26.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4694) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.610226 +- 0.024276 | shots 18.0 | destroyed value 1829.6
+[cleanup] removed tmp dir /tmp/b4gt
+
+reports written: output/e24_mappo_gen/train/family_report.json, output/e24_mappo_gen/train/family_report.md
+family leak rate: 0.6050 +- 0.0326 [worst 0.6574]
+DN-WTA v3 family evaluation
+  split=val instances=dn_3x50_K10_s27.txt, dn_3x50_K10_s28.txt, dn_3x50_K10_s29.txt, dn_3x50_K10_s30.txt
+  policy=mappo seeds=30 (base 42) timelimit=30s
+
+=== dn_3x50_K10_s27.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4154) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.556211 +- 0.035642 | shots 18.0 | destroyed value 1843.5
+
+=== dn_3x50_K10_s28.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4598) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.627164 +- 0.015674 | shots 18.0 | destroyed value 1714.3
+
+=== dn_3x50_K10_s29.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4760) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.645091 +- 0.018775 | shots 17.0 | destroyed value 1689.4
+
+=== dn_3x50_K10_s30.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4604) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.635976 +- 0.026077 | shots 18.0 | destroyed value 1676.0
+[cleanup] removed tmp dir /tmp/b4gv
+
+reports written: output/e24_mappo_gen/val/family_report.json, output/e24_mappo_gen/val/family_report.md
+family leak rate: 0.6161 +- 0.0352 [worst 0.6451]
+E24_EVAL_ALL_DONE

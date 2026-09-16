@@ -27,6 +27,15 @@ boundary untouched; only three parameter/distribution/protocol changes:
 Regression: `--w-trend 0 --mu 8 --quota 2,2,1` reproduces v2 instances
 byte-identically (acceptance V8).
 
+v4 (2026-09-08, scale-up family, spec: DN-WTA_v4_数据集说明.md): the
+per-wave count restriction `n/K == 5` is lifted (the generic quota-sum
+check `sum(quota) == n/K` remains). v4 family = m=5, n=100, K=10, mu=6
+(global pool 30), quota (2,2,6) -> 10 targets per wave; ammo pressure
+structure is an exact translation of v3 (pool/demand = 30/45 = 0.67 =
+v3's 18/27; pool exhausts at decision step 5 at full tempo). All five
+RandomState streams, distributions and the file format are unchanged;
+v3/v2 parameter paths are untouched (byte-identical regression).
+
 Usage:
 
     python experiments/gen_dn_data.py                  # v3 defaults, seeds 1,2
@@ -222,8 +231,6 @@ def main(argv=None):
         ap.error("--r0-min/--r0-max must satisfy 0 < min <= max")
     if args.n % args.K != 0:
         ap.error("waves require n %% K == 0 (got n=%d, K=%d)" % (args.n, args.K))
-    if args.n // args.K != 5:
-        ap.error("quota sampling assumes 5 targets per wave (n/K == 5)")
     if sum(args.quota) != args.n // args.K:
         ap.error("--quota must sum to n/K == %d (got %d)"
                  % (args.n // args.K, sum(args.quota)))

@@ -1,0 +1,31 @@
+DN-WTA v3 family evaluation
+  split=val instances=dn_3x50_K10_s27.txt, dn_3x50_K10_s28.txt, dn_3x50_K10_s29.txt, dn_3x50_K10_s30.txt
+  policy=marl seeds=30 (base 42) timelimit=30s
+
+=== dn_3x50_K10_s27.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4154) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.578808 +- 0.027236 | shots 17.0 | destroyed value 1749.6
+
+=== dn_3x50_K10_s28.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4598) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.599855 +- 0.015045 | shots 18.0 | destroyed value 1839.9
+
+=== dn_3x50_K10_s29.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4760) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.624013 +- 0.024819 | shots 17.0 | destroyed value 1789.7
+
+=== dn_3x50_K10_s30.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4604) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.600543 +- 0.027905 | shots 18.0 | destroyed value 1839.1
+[cleanup] removed tmp dir /tmp/e20d
+
+reports written: output/e20_gen/c005_val/family_report.json, output/e20_gen/c005_val/family_report.md
+family leak rate: 0.6008 +- 0.0160 [worst 0.6240]

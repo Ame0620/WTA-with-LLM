@@ -1,0 +1,31 @@
+DN-WTA v3 family evaluation
+  split=val instances=dn_3x50_K10_s27.txt, dn_3x50_K10_s28.txt, dn_3x50_K10_s29.txt, dn_3x50_K10_s30.txt
+  policy=mappo seeds=30 (base 42) timelimit=30s
+
+=== dn_3x50_K10_s27.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4154) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.556211 +- 0.035642 | shots 18.0 | destroyed value 1843.5
+
+=== dn_3x50_K10_s28.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4598) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.627164 +- 0.015674 | shots 18.0 | destroyed value 1714.3
+
+=== dn_3x50_K10_s29.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4760) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.645091 +- 0.018775 | shots 17.0 | destroyed value 1689.4
+
+=== dn_3x50_K10_s30.txt (m=3 n=50 K=10 mu=6 pool=18 total_value=4604) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.635976 +- 0.026077 | shots 18.0 | destroyed value 1676.0
+[cleanup] removed tmp dir /tmp/b4gv
+
+reports written: output/e24_mappo_gen/val/family_report.json, output/e24_mappo_gen/val/family_report.md
+family leak rate: 0.6161 +- 0.0352 [worst 0.6451]

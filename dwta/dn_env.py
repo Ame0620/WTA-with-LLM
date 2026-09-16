@@ -246,7 +246,7 @@ class DNEnv(object):
             # 4) decision window (t <= K-2) ------------------------------
             actions, info = {}, {"solved": True, "failed_agents": 0,
                                  "wall_time": 0.0}
-            n_legal = n_illegal = 0
+            n_legal = n_illegal = pool_blocked = 0
             if t <= dn.K - 2:
                 t0 = time.time()
                 actions, info = policy.act(self, t)
@@ -262,8 +262,19 @@ class DNEnv(object):
                     else:
                         n_illegal += 1
                         actions[i] = None
+                # global-pool arbitration: the per-agent legality checks
+                # above all see the SAME pre-fire pool, so simultaneous
+                # launches can overshoot m*mu (observed pool_end = -1).
+                # Fire in ascending platform order, re-checking the pool
+                # before each launch; the losers hold fire. This is a
+                # resource arbitration (the action was legal at decision
+                # time), so it is counted separately from illegal actions.
                 fired = {i: j for i, j in actions.items() if j is not None}
                 for i in sorted(fired):
+                    if self.pool <= 0:
+                        pool_blocked += 1
+                        actions[i] = None
+                        continue
                     self.fire(i, fired[i], t)
 
             cost_shot, cost_all, expected_kill = self._step_costs(
@@ -291,6 +302,7 @@ class DNEnv(object):
                 "wall_time": info.get("wall_time", 0.0),
                 "legal_actions": n_legal,
                 "illegal_actions": n_illegal,
+                "pool_blocked": pool_blocked,
                 "detail": info.get("detail"),
             }
             steps_rec.append(rec)
@@ -328,6 +340,7 @@ class DNEnv(object):
             "destroyed_value": destroyed_total_value,
             "shots_total": len(self.shots),
             "invalid_shots": self.invalid_shots,
+            "pool_blocked": sum(s.get("pool_blocked", 0) for s in steps_rec),
             "ammo_end": self.pool,
             "pool_curve": [s["pool_after"] for s in steps_rec],
             "first_engagement_age": dict(self.first_engagement_age),

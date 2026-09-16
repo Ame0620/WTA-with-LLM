@@ -110,12 +110,19 @@ class AgentMemory:
         return []
 
 
-def build_inputs(obs_i: dict, mem: AgentMemory, dyn) -> dict:
+def build_inputs(obs_i: dict, mem: AgentMemory, dyn,
+                 drop_m1: bool = False) -> dict:
     """Pack the network input tensors from one agent's observation.
 
     dyn: the DNInstance (public prior: w / p / v_m / dt / delta_d / pcap /
     K / m / mu) - instance parameters are public knowledge (greedy
     precedent dn_policies.py:35); NO env internals are touched here.
+
+    drop_m1: drop the two M1-memory-derived columns from x (the lambda
+    recursion estimate col 7 and the friendly-fire estimate n_hat col
+    10) -> x in R^8. Used by the E24/E25 learning baselines (MAPPO /
+    QMIX) which must NOT depend on the M1 memory channel; default False
+    keeps the self-developed marl path bit-identical.
     """
     t = obs_i["t"]
     pub = obs_i["public"]
@@ -184,7 +191,10 @@ def build_inputs(obs_i: dict, mem: AgentMemory, dyn) -> dict:
     ]
 
     return {
-        "x": torch.tensor(xs, dtype=torch.float32).reshape(-1, 10),
+        "x": torch.tensor(
+            [[c for k, c in enumerate(row)
+              if not (drop_m1 and k in (6, 9))] for row in xs],
+            dtype=torch.float32).reshape(-1, 8 if drop_m1 else 10),
         "q": torch.tensor(q, dtype=torch.float32),
         "g": torch.tensor(g, dtype=torch.float32),
         "lambda": torch.tensor(lam_list, dtype=torch.float32),

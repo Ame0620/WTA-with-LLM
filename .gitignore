@@ -4,13 +4,35 @@
 __pycache__/
 *.pyc
 
-# 专利文档（整目录不上传）
+# 汇报与专利（整目录不上传）
+汇报相关/
+写专利-02/
 专利文档/
 
 # 除以下白名单外，其余 md 文件一律不上传
 *.md
 !DN-WTA_v3_数据集说明.md
+!DN-WTA_v4_数据集说明.md
 !项目总结.md
 !实验报告_MARL学习策略.md
 !实验报告_MARL核心框架.md
 !实验报告_传统3算法.md
+!output/**/*.md
+!data/*/MANIFEST.md
+
+# output 实验产物：仅保留 md 报告与小体积摘要 json；权重/训练日志/大 json 等中间产物不上传
+output/**/*.json
+!output/**/train_summary.json
+!output/e19_eval/e19_summary.json
+!output/e15_diag/diag_raw.json
+!output/e17_bc/bc_data_stats.json
+!output/e17_bc_smoke/bc_data_stats.json
+output/**/*.pt
+output/**/train_log.jsonl
+output/**/*.out
+output/**/*.log
+output/**/*.nohup
+output/**/nohup
+output/**/*.sol
+output/**/*.txt
+output/tmp/

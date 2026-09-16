@@ -13,13 +13,29 @@ changes). Normalisation base = dyn.total_value().
     (in-flight set = shots with t_fire <= t < t_hit, i.e. including this
     step's launches - training-side global information, critic-scope).
 
-Credit attribution: for every shot with outcome == 'kill', its +w_j/total
-is booked to the firing slot (t_fire, i).
+Credit attribution - E15-A3 (proportional p_shot split, replaces the e14
+killer-takes-all booking):
+    For each kill event (t_kill, j) the +w_j/total credit is split over
+    the interceptors still in flight toward j at settlement time (the
+    killer included, i.e. t_fire <= t_kill <= t_hit), EXCLUDING shots
+    whose own outcome is 'invalid' (a duplicate-kill or dead-target shot
+    never contributed a live probability, so it receives no share - this
+    is what the A3 spec assertions pin down). Each interceptor's share
+
+        kill_credit_k = (w_j / total) * p_shot_k / sum_{k' in pool} p_shot_k
+
+    is booked at ITS OWN firing slot (t_fire_k, i_k) - the e14 credit
+    key semantics are unchanged, so downstream credit.get((t, i))
+    matching in process_batch needs no edits. A lone killer therefore
+    receives the full w_j/total exactly as e14 did; misses/invalid
+    settlements produce no credit events of their own.
 
 Reconciliation (selftest-asserted):
     * sum_t R_team == (destroyed_value - leak_value) / total   < 1e-9
     * kill-shot count == len(env.destroyed_at)
     * credit keys subset of env.shots (t_fire, i) keys
+    * sum(credit) == destroyed_value / total   (A3 split conserves mass)
+    * no 'invalid' shot is ever credited by any kill pool        (A3)
 """
 
 import torch
@@ -29,7 +45,13 @@ GAMMA_SHAPE = 0.99
 
 
 def build_rewards(env, run_rec: dict, dyn,
-                  c_invalid: float = C_INVALID) -> dict:
+                  c_invalid: float = C_INVALID,
+                  credit_mode: str = "credit_kill",
+                  phi_sign: float = -1.0) -> dict:
+    """phi_sign: -1 (default, historical) gives Phi = -sum w*pbar (launch
+    steps receive a negative kick); +1 flips the potential sign (E15-A3
+    alternative 1: launch steps get an immediate positive kick) - used
+    only as the A0-triggered pos control arm after e16 picks c*."""
     total = float(dyn.total_value())
     K = dyn.K
     steps = K + 1                                  # t = 0..K
@@ -87,14 +109,30 @@ def build_rewards(env, run_rec: dict, dyn,
     R_shaped = torch.zeros(steps, dtype=torch.float64)
     for t in range(steps):
         nxt = Phi[t + 1] if t + 1 <= steps else 0.0
-        R_shaped[t] = R_team[t] + GAMMA_SHAPE * nxt - Phi[t]
+        R_shaped[t] = R_team[t] + phi_sign * (GAMMA_SHAPE * nxt - Phi[t])
 
-    # ---- credit attribution -------------------------------------------
+    # ---- credit attribution (E15-A3) -----------------------------------
+    # Proportional p_shot split over the in-flight pool at kill time;
+    # 'credit_kill_cf' is an accepted alias (dummy compatibility mode -
+    # identical semantics). See module docstring for the exact pool rule.
     credit = {}
     for ev in env.shots:
-        if ev.get("outcome") == "kill":
+        if ev.get("outcome") != "kill":
+            continue
+        j, t_kill = ev["j"], ev["t_hit"]
+        val = dyn.w[j] / total
+        pool = [e for e in env.shots
+                if e["j"] == j and e["t_fire"] <= t_kill
+                and e["t_hit"] >= t_kill
+                and e.get("outcome") != "invalid"]
+        psum = sum(e["p_shot"] for e in pool)
+        if psum <= 0.0:                              # degenerate guard
             key = (ev["t_fire"], ev["i"])
-            credit[key] = credit.get(key, 0.0) + dyn.w[ev["j"]] / total
+            credit[key] = credit.get(key, 0.0) + val
+            continue
+        for e in pool:
+            key = (e["t_fire"], e["i"])
+            credit[key] = credit.get(key, 0.0) + val * e["p_shot"] / psum
 
     shots_detail = [dict(ev) for ev in env.shots]
 
@@ -139,6 +177,39 @@ def _selftest(instances):
             assert n_kills == len(env.destroyed_at), "kill count mismatch"
             valid_keys = {(s["t_fire"], s["i"]) for s in env.shots}
             assert set(out["credit"]).issubset(valid_keys), "credit leak"
+            # ---- A3 assertions --------------------------------------
+            # (a) mass conservation: split pools still book exactly the
+            #     killed value (a lone killer gets the full w_j/total)
+            cred_sum = sum(out["credit"].values())
+            kills_val = sum(dn.w[j] for j in env.destroyed_at) / total_val
+            assert abs(cred_sum - kills_val) < 1e-9, \
+                "A3 credit mass off by %g" % abs(cred_sum - kills_val)
+            # (b) full replay cross-check: proportional p_shot split over
+            #     the in-flight pool, invalid shots excluded -> implies
+            #     duplicate-kill / dead-target shots earn zero credit
+            replay = {}
+            for ev in env.shots:
+                if ev.get("outcome") != "kill":
+                    continue
+                pool = [e for e in env.shots
+                        if e["j"] == ev["j"]
+                        and e["t_fire"] <= ev["t_hit"]
+                        and e["t_hit"] >= ev["t_hit"]
+                        and e.get("outcome") != "invalid"]
+                psum = sum(e["p_shot"] for e in pool)
+                val = dn.w[ev["j"]] / total_val
+                if psum <= 0:
+                    k0 = (ev["t_fire"], ev["i"])
+                    replay[k0] = replay.get(k0, 0.0) + val
+                    continue
+                for e in pool:
+                    k0 = (e["t_fire"], e["i"])
+                    replay[k0] = replay.get(k0, 0.0) \
+                        + val * e["p_shot"] / psum
+            assert set(replay) == set(out["credit"]), "A3 key mismatch"
+            for k0 in replay:
+                assert abs(replay[k0] - out["credit"][k0]) < 1e-9, \
+                    "A3 share mismatch at %s" % (k0,)
             total_checks += 1
             print("  %s seed %d: R_team sum=%.6f reconciled (err %.2e), "
                   "kills=%d, credit slots=%d"

@@ -49,7 +49,7 @@ from dwta.dn_instance import DNInstance                     # noqa: E402
 from dwta.dn_env import DNEnv                               # noqa: E402
 from marl.policy import MarlPolicy, _pick_device            # noqa: E402
 from marl.network import MarlNet, assert_params             # noqa: E402
-from marl.reward import build_rewards                       # noqa: E402
+from marl.reward import build_rewards, C_INVALID        # noqa: E402
 
 DATA_DIR = os.path.join(PROJECT_ROOT, "data", "dn-data-v3")
 
@@ -85,11 +85,21 @@ class CriticNet(nn.Module):
         self.head = nn.Sequential(nn.Linear(self.STATE_DIM, 128), nn.Tanh(),
                                   nn.Linear(128, 1))
 
-    def forward(self, tgt, glob, act):
-        """tgt: [B, L, 5] (padded, mask via zeros), glob: [B, 3],
-        act: [B, 9]. Returns [B] values."""
+    def forward(self, tgt, glob, act, tgt_mask=None):
+        """tgt: [B, L, 5] (padded), glob: [B, 3], act: [B, 9]. Returns [B]
+        values.
+
+        tgt_mask: [B, L] bool (True = real row). When given, pooling is a
+        MASKED mean over real rows only - numerically equivalent to the
+        per-sample mean of the unpadded matrix (A1 requirement); without a
+        mask this stays the historical mean over dim=1 (0-safe fallback).
+        """
         e = torch.tanh(self.tgt_proj(tgt))            # [B, L, 32]
-        pooled = e.mean(dim=1)                        # [B, 32] (0-safe)
+        if tgt_mask is not None:
+            m = tgt_mask.unsqueeze(-1).to(e.dtype)    # [B, L, 1]
+            pooled = (e * m).sum(dim=1) / m.sum(dim=1).clamp(min=1.0)
+        else:
+            pooled = e.mean(dim=1)                    # [B, 32] (0-safe)
         z = torch.cat([pooled, glob, act], dim=-1)
         return self.head(z).squeeze(-1)
 
@@ -165,7 +175,8 @@ class Trainer(object):
         self.env_steps = 0
         self.best_val = float("inf")
         self.log_path = os.path.join(args.output, "train_log.jsonl")
-        self._log_f = open(self.log_path, "w")
+        self._log_f = open(self.log_path,
+                           "a" if getattr(args, "resume", False) else "w")
 
     # ------------------------------------------------------------------
     def _anneal_tau(self, it):
@@ -197,7 +208,13 @@ class Trainer(object):
             return actions, info
 
         run_rec = env.run(type("W", (), {"act": staticmethod(wrapped_act)})())
-        rew = build_rewards(env, run_rec, dn)
+        ci = self.args.c_invalid
+        if ci is None:
+            ci = C_INVALID           # reward.py module default
+        rew = build_rewards(env, run_rec, dn, c_invalid=ci,
+                            credit_mode=getattr(self.args, "credit_mode",
+                                                "credit_kill"),
+                            phi_sign=getattr(self.args, "phi_sign", -1.0))
         return samples, rew, run_rec
 
     # ------------------------------------------------------------------
@@ -214,68 +231,92 @@ class Trainer(object):
 
     # ------------------------------------------------------------------
     def process_batch(self, episodes):
-        """Turn collected episodes into flat PPO samples."""
-        flat = []
+        """Turn collected episodes into flat PPO samples.
+
+        A1 batched variant: all decision steps across episodes are
+        pad-stacked and scored by ONE critic forward; the 3 counterfactual
+        hold variants per step form a (3B, ...) batch scored by a second
+        forward. Math is identical to the historical per-step loop (masked
+        mean over real rows reproduces the per-sample mean); MPS keeps the
+        CPU fallback.
+        """
+        # ---- gather decision steps + folded reward series --------------
+        eps = []
         for (samples, rew, run_rec) in episodes:
             K = len(rew["R_shaped"]) - 1               # t = 0..K
             dec_steps = [s for s in samples if s["t"] <= K - 2]
             if not dec_steps:
                 continue
-            # decision-step reward series; fold tail (t=K-1, K) into the
-            # last decision step
             r_series = [float(rew["R_shaped"][s["t"]]) for s in dec_steps]
             r_series[-1] += float(rew["R_shaped"][K - 1]) \
                 if K - 1 > dec_steps[-1]["t"] else 0.0
             r_series[-1] += float(rew["R_shaped"][K])
-            with torch.no_grad():
-                vals = []
-                for s in dec_steps:
-                    try:
-                        v = self.critic(
-                            s["tgt"].unsqueeze(0).to(self.device),
-                            s["glob"].unsqueeze(0).to(self.device),
-                            s["act"].unsqueeze(0).to(self.device)).item()
-                    except RuntimeError as e:
-                        if self.device.type != "mps":
-                            raise
-                        print("[marl-train] MPS critic failed (%s) -> CPU"
-                              % e)
-                        self.device = torch.device("cpu")
-                        self.critic.to(self.device)
-                        self.actor.to(self.device)
-                        v = self.critic(s["tgt"].unsqueeze(0),
-                                        s["glob"].unsqueeze(0),
-                                        s["act"].unsqueeze(0)).item()
-                    vals.append(v)
+            eps.append((dec_steps, r_series, rew["credit"]))
+        if not eps:
+            return []
+
+        steps = [s for ds, _, _ in eps for s in ds]
+        n_agents = len(steps[0]["agents"]) if steps else 0
+        B = len(steps)
+
+        # ---- pad-stack critic inputs ----------------------------------
+        Lp = max(s["tgt"].shape[0] for s in steps)
+        tb = torch.zeros(B, Lp, 5)
+        tm = torch.zeros(B, Lp, dtype=torch.bool)
+        for b, s in enumerate(steps):
+            L = s["tgt"].shape[0]
+            tb[b, :L] = s["tgt"]
+            tm[b, :L] = True
+        gb = torch.stack([s["glob"] for s in steps])
+        ab = torch.stack([s["act"] for s in steps])
+
+        # counterfactual hold variants: for each step, n_agents rows with
+        # agent i's action triple replaced by (1, 0, 0) = hold
+        tb3 = tb.repeat_interleave(n_agents, dim=0)
+        tm3 = tm.repeat_interleave(n_agents, dim=0)
+        gb3 = gb.repeat_interleave(n_agents, dim=0)
+        ab3 = ab.repeat_interleave(n_agents, dim=0)
+        for r in range(B):
+            for i in range(n_agents):
+                ab3[r * n_agents + i, i * 3:i * 3 + 3] = \
+                    torch.tensor([1.0, 0.0, 0.0])
+
+        # ---- one + one critic forwards (with CPU fallback) -------------
+        with torch.no_grad():
+            try:
+                dev = self.device
+                v_all = self.critic(tb.to(dev), gb.to(dev), ab.to(dev),
+                                    tm.to(dev))
+                v_cf = self.critic(tb3.to(dev), gb3.to(dev), ab3.to(dev),
+                                   tm3.to(dev))
+            except RuntimeError as e:
+                if self.device.type != "mps":
+                    raise
+                print("[marl-train] MPS critic failed (%s) -> CPU" % e)
+                self.device = torch.device("cpu")
+                self.critic.to(self.device)
+                self.actor.to(self.device)
+                v_all = self.critic(tb, gb, ab, tm)
+                v_cf = self.critic(tb3, gb3, ab3, tm3)
+        vals_all = v_all.tolist()
+        cf_all = (v_all.unsqueeze(1)
+                  - v_cf.view(B, n_agents)).tolist()   # base - hold_i
+
+        # ---- GAE + flat sample assembly (same math as before) ----------
+        flat = []
+        cursor = 0
+        for dec_steps, r_series, credit in eps:
+            vals = vals_all[cursor:cursor + len(dec_steps)]
+            cfs = cf_all[cursor:cursor + len(dec_steps)]
             gae = self._gae(r_series, vals)
-            credit = rew["credit"]
             for idx, s in enumerate(dec_steps):
                 t = s["t"]
-                # counterfactual differential per agent
-                cf = {}
-                with torch.no_grad():
-                    base_v = vals[idx]
-                    for i in range(len(s["agents"])):
-                        act_cf = s["act"].clone().view(-1)
-                        act_cf[i * 3:i * 3 + 3] = torch.tensor(
-                            [1.0, 0.0, 0.0])
-                        try:
-                            v = self.critic(
-                                s["tgt"].unsqueeze(0).to(self.device),
-                                s["glob"].unsqueeze(0).to(self.device),
-                                act_cf.view(1, -1).to(self.device)
-                            ).item()
-                        except RuntimeError:
-                            v = self.critic(
-                                s["tgt"].unsqueeze(0),
-                                s["glob"].unsqueeze(0),
-                                act_cf.view(1, -1)).item()
-                        cf[i] = base_v - v
+                cf_row = cfs[idx]
                 for entry in s["agents"]:
                     i = entry["agent"]
                     if entry.get("empty"):
                         continue
-                    adv_i = gae[idx] + credit.get((t, i), 0.0) + cf[i]
+                    adv_i = gae[idx] + credit.get((t, i), 0.0) + cf_row[i]
                     flat.append({
                         "x": entry["x"], "q": entry["q"], "g": entry["g"],
                         "mask": entry["mask"], "pick": entry["pick"],
@@ -284,12 +325,20 @@ class Trainer(object):
                         "ret": gae[idx] + vals[idx],
                         "tgt": s["tgt"], "glob": s["glob"], "act": s["act"],
                     })
+            cursor += len(dec_steps)
         return flat
 
     # ------------------------------------------------------------------
     def ppo_update(self, flat):
         if not flat:
             return 0.0, 0.0, 0.0
+        if getattr(self.args, "no_batched", False):
+            return self._ppo_update_loop(flat)
+        return self._ppo_update_batched(flat)
+
+    # ------------------------------------------------------------------
+    def _ppo_update_loop(self, flat):
+        """Historical per-sample PPO update (A1 fallback, --no-batched)."""
         advs = torch.tensor([f["adv"] for f in flat], dtype=torch.float32)
         advs = (advs - advs.mean()) / (advs.std() + 1e-8)
         rets = torch.tensor([f["ret"] for f in flat], dtype=torch.float32)
@@ -348,6 +397,110 @@ class Trainer(object):
                 stats[2])
 
     # ------------------------------------------------------------------
+    def _ppo_update_batched(self, flat):
+        """A1 batched PPO update: actor samples pad-stacked once, per-
+        minibatch forward_batch gives all logits at once; logp via gather,
+        entropy summed over finite slots (pad contributes 0), tau replayed
+        per sample. Critic regression is one masked-mean forward over all
+        n samples per epoch. Same math as _ppo_update_loop."""
+        advs = torch.tensor([f["adv"] for f in flat], dtype=torch.float32)
+        advs = (advs - advs.mean()) / (advs.std() + 1e-8)
+        rets = torch.tensor([f["ret"] for f in flat], dtype=torch.float32)
+        taus = torch.tensor([f.get("tau", self.collector.tau)
+                             for f in flat], dtype=torch.float32)
+        picks = torch.tensor([f["pick"] for f in flat], dtype=torch.long)
+        lpo = torch.tensor([f["logp_old"] for f in flat],
+                           dtype=torch.float32)
+        n = len(flat)
+        idx_all = torch.randperm(n)
+        stats = [0.0, 0.0, 0.0]
+        nb = 0
+
+        # ---- pad-stack actor inputs once ------------------------------
+        Lmax = max(f["x"].shape[0] for f in flat)
+        xb = torch.zeros(n, Lmax, 10)
+        pb = torch.zeros(n, Lmax, dtype=torch.bool)   # padding (real rows)
+        mb = torch.zeros(n, Lmax, dtype=torch.bool)   # feasibility mask
+        for b, f in enumerate(flat):
+            L = f["x"].shape[0]
+            xb[b, :L] = f["x"]
+            pb[b, :L] = True
+            mb[b, :L] = f["mask"]
+        qb = torch.stack([f["q"] for f in flat])
+        gb = torch.stack([f["g"] for f in flat])
+        # ---- pad-stack critic inputs once ------------------------------
+        Lp = max(f["tgt"].shape[0] for f in flat)
+        tb = torch.zeros(n, Lp, 5)
+        tm = torch.zeros(n, Lp, dtype=torch.bool)
+        for b, f in enumerate(flat):
+            L = f["tgt"].shape[0]
+            tb[b, :L] = f["tgt"]
+            tm[b, :L] = True
+        gcb = torch.stack([f["glob"] for f in flat])
+        ab = torch.stack([f["act"] for f in flat])
+
+        dev = self.device
+        for _epoch in range(PPO_EPOCHS):
+            for start in range(0, n, MINIBATCH):
+                idx = idx_all[start:start + MINIBATCH]
+                self.opt_a.zero_grad()
+                try:
+                    logits = self.actor.forward_batch(
+                        xb[idx].to(dev), qb[idx].to(dev),
+                        gb[idx].to(dev), pb[idx].to(dev))
+                except RuntimeError as e:
+                    if dev.type != "mps":
+                        raise
+                    print("[marl-train] MPS actor batch failed (%s) -> CPU"
+                          % e)
+                    dev = self.device = torch.device("cpu")
+                    self.actor.to(dev)
+                    logits = self.actor.forward_batch(
+                        xb[idx], qb[idx], gb[idx], pb[idx])
+                # feasibility mask over target slots (pad slots are
+                # already -inf; hold slot 0 always feasible)
+                feas = torch.cat([torch.ones(len(idx), 1, dtype=torch.bool,
+                                             device=logits.device),
+                                  mb[idx].to(logits.device)], dim=1)
+                masked = logits.masked_fill(~feas, -float("inf"))
+                tau = taus[idx].to(logits.device).unsqueeze(1)
+                logp_all = torch.log_softmax(masked / tau, dim=1)
+                logp_new = logp_all.gather(
+                    1, picks[idx].to(logits.device).unsqueeze(1)
+                ).squeeze(1)
+                ratio = torch.exp(logp_new - lpo[idx].to(logits.device))
+                a = advs[idx].to(logits.device)
+                surr = torch.min(ratio * a,
+                                 torch.clamp(ratio, 1 - PPO_CLIP,
+                                             1 + PPO_CLIP) * a)
+                # entropy over finite slots only: pad/infeasible slots
+                # carry -inf logp; zero them BEFORE the product so the
+                # backward pass never forms 0 * (-inf) = NaN gradients
+                # (torch.where alone does NOT guard the unselected branch)
+                fin = torch.isfinite(logp_all)
+                lp_safe = torch.where(fin, logp_all,
+                                      torch.zeros_like(logp_all))
+                pent = torch.exp(lp_safe) * lp_safe
+                ent = -pent.sum(dim=1)
+                pol_loss = -(surr + ENT_COEF * ent).mean()
+                pol_loss.backward()
+                torch.nn.utils.clip_grad_norm_(self.actor.parameters(), 0.5)
+                self.opt_a.step()
+                stats[0] += float(pol_loss.item())
+                nb += 1
+            # ---- critic regression: one batched forward per epoch ------
+            self.opt_c.zero_grad()
+            v = self.critic(tb.to(dev), gcb.to(dev), ab.to(dev),
+                            tm.to(dev))
+            v_loss = ((v - rets.to(dev)) ** 2).mean()
+            v_loss.backward()
+            torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 0.5)
+            self.opt_c.step()
+            stats[1] += float(v_loss.item())
+        return (stats[0] / max(1, nb), stats[1] / max(1, PPO_EPOCHS),
+                stats[2])
+
+    # ------------------------------------------------------------------
     @torch.no_grad()
     def evaluate_val(self):
         """val split x seeds 42-51, greedy argmax, leak rate only."""
@@ -363,12 +516,25 @@ class Trainer(object):
         return mean, std
 
     # ------------------------------------------------------------------
-    def save_ckpt(self, path):
+    def save_ckpt(self, path, it=None):
         torch.save({
             "state_dict": self.actor.state_dict(),
+            "critic_state_dict": self.critic.state_dict(),
+            "iter": it,
+            "best_val": (None if self.best_val == float("inf")
+                         else self.best_val),
             "feature_spec": {"x": 10, "q": 5, "g": 3},
             "params_count": self.n_params,
         }, path)
+
+    def _load_weights(self, ckpt):
+        """Load actor + critic weights only (used by --resume and
+        --resume-from)."""
+        self.actor.load_state_dict(ckpt["state_dict"])
+        if "critic_state_dict" in ckpt:
+            self.critic.load_state_dict(ckpt["critic_state_dict"])
+        self.eval_pol.net = self.actor
+        self.collector.net = self.actor
 
     # ------------------------------------------------------------------
     def run(self):
@@ -379,6 +545,36 @@ class Trainer(object):
         eval_points = 0
         bad_points = 0
         stopped = None
+        if getattr(args, "resume", False):
+            if not os.path.exists(ckpt_path):
+                raise FileNotFoundError(
+                    "--resume needs %s (nothing to resume from)" % ckpt_path)
+            ck = torch.load(ckpt_path, map_location="cpu")
+            self._load_weights(ck)
+            it = int(ck.get("iter") or 0)
+            if ck.get("best_val") is not None:
+                self.best_val = float(ck["best_val"])
+            print("[marl-train] resume from %s: iter=%d best_val=%.4f"
+                  % (ckpt_path, it, self.best_val), flush=True)
+        elif getattr(args, "resume_from", None):
+            ck = torch.load(args.resume_from, map_location="cpu")
+            self._load_weights(ck)
+            print("[marl-train] weights loaded from %s (fresh log, iter 0)"
+                  % args.resume_from, flush=True)
+        elif getattr(args, "init_from", None):
+            # A4 BC warm start: blend actor weights toward the BC ckpt
+            ck = torch.load(args.init_from, map_location="cpu")
+            bc_sd = ck["state_dict"]
+            a = float(getattr(args, "init_blend", 1.0))
+            sd = self.actor.state_dict()
+            for k in sd:
+                sd[k] = (1.0 - a) * sd[k] + a * bc_sd[k]
+            self.actor.load_state_dict(sd)
+            self.eval_pol.net = self.actor
+            self.collector.net = self.actor
+            print("[marl-train] actor blended with %s (alpha=%g)"
+                  % (args.init_from, a), flush=True)
+        epi = args.episodes_per_iter
         while it < args.iters:
             if time.time() - t_start > WALL_LIMIT_SEC:
                 stopped = "wall_limit_24h"
@@ -386,9 +582,9 @@ class Trainer(object):
             # ---- collect one batch ----------------------------------
             episodes = []
             train_leaks = []
-            for _ in range(EPISODES_PER_ITER):
+            for _ in range(epi):
                 dn = self.train_dns[
-                    (it * EPISODES_PER_ITER + len(episodes))
+                    (it * epi + len(episodes))
                     % len(self.train_dns)]
                 samples, rew, run_rec = self.collect_episode(dn)
                 episodes.append((samples, rew, run_rec))
@@ -423,7 +619,7 @@ class Trainer(object):
                     break
                 if val_mean < self.best_val - 1e-6:
                     self.best_val = val_mean
-                    self.save_ckpt(ckpt_path)
+                    self.save_ckpt(ckpt_path, it=it)
                     bad_points = 0
                 else:
                     bad_points += 1
@@ -454,16 +650,50 @@ class Trainer(object):
 def main(argv=None):
     here = os.path.dirname(os.path.abspath(__file__))
     ap = argparse.ArgumentParser(description="CTDE training for marl")
-    ap.add_argument("--iters", type=int, default=100000)
-    ap.add_argument("--eval-every", type=int, default=20)
-    ap.add_argument("--patience", type=int, default=20,
-                    help="early-stop patience in EVAL POINTS")
+    ap.add_argument("--iters", type=int, default=3000,
+                    help="A2 relaxed budget: max 3000 iters")
+    ap.add_argument("--eval-every", type=int, default=25)
+    ap.add_argument("--patience", type=int, default=60,
+                    help="early-stop patience in EVAL POINTS (A2)")
+    ap.add_argument("--episodes-per-iter", type=int, default=128,
+                    help="A2: 4x episodes per iter vs e14 (was a 32 const)")
     ap.add_argument("--device", default="auto",
                     choices=["auto", "mps", "cpu"])
     ap.add_argument("--seed", type=int, default=0,
                     help="actor sampling generator seed")
     ap.add_argument("--anneal-iters", type=int, default=2000,
                     help="iters to anneal tau 1.0 -> 0.5")
+    ap.add_argument("--no-batched", action="store_true",
+                    help="A1: fall back to the historical per-sample PPO "
+                         "update (gate/diagnosis only)")
+    ap.add_argument("--c-invalid", type=float, default=None,
+                    help="invalid-engagement penalty (default: reward.py "
+                         "C_INVALID=0.01); e16 scans 0.005/0.01/0.03/0.05")
+    ap.add_argument("--credit-mode", default="credit_kill",
+                    choices=["credit_kill", "credit_kill_cf"],
+                    help="A3: both names are accepted and semantically "
+                         "identical (proportional p_shot split); dummy "
+                         "compat for the plan's CLI surface")
+    ap.add_argument("--phi-sign", type=float, default=-1.0,
+                    choices=[-1.0, 1.0],
+                    help="A3-alt-1 (A0-triggered pos control): -1 keeps "
+                         "the historical Phi = -sum w*pbar; +1 flips the "
+                         "potential sign so launch steps get a positive "
+                         "kick")
+    ap.add_argument("--resume", action="store_true",
+                    help="A2: resume from <output>/best.pt (weights + iter "
+                         "+ best_val; log APPENDED, tau re-annealed by iter)")
+    ap.add_argument("--resume-from", default=None,
+                    help="A2: load weights only from CKPT into a FRESH run "
+                         "(fresh log, iter 0) - e.g. e16 reusing e15 as "
+                         "baseline; never mixes logs")
+    ap.add_argument("--init-from", default=None,
+                    help="A4: BC warm-start ckpt for the ACTOR; combined "
+                         "with --init-blend")
+    ap.add_argument("--init-blend", type=float, default=1.0,
+                    help="A4: actor init blend theta = (1-a)*theta_rand + "
+                         "a*theta_bc (0 = random control, 0.1 = spec "
+                         "BLEND, 1 = full BC)")
     ap.add_argument("--output", default=os.path.join(
         here, "..", "output", "e14_marl_train"))
     args = ap.parse_args(argv)

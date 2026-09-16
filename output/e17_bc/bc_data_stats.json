@@ -1,0 +1,14 @@
+{
+  "episodes": 1482,
+  "samples": 40014,
+  "dropped": 0,
+  "empty": 0,
+  "agree_train": 0.9220022991952816,
+  "agree_holdout": 0.89,
+  "teacher_kills_per_ep": 10.45,
+  "bc_kills_per_ep": 10.45,
+  "online_ratio": 1.0,
+  "gate_pass": true,
+  "loss_first": 1.613295555114746,
+  "loss_last": 0.3273860812187195
+}

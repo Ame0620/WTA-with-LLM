@@ -18,9 +18,14 @@ Usage (from the project root):
     python experiments/dn_family_eval.py --split test --policy cplex \
         --seeds 30 --seed-base 42 --timelimit 30 --output output/e13_dn3_cplex
 
-Policies: none / greedy / cplex (same registry as main.py --policy for DN
-instances). greedy automatically runs with the per-step CPLEX reference
-(--dn-reference semantics) so its gap (metric iii) is computed.
+Policies: none / greedy / cplex / pocplex / marl / greedy_threat /
+greedy_nearest / random / rh-cplex / mappo / qmix / iql (same registry
+as dn_policies.build_policy). The greedy family (greedy, greedy_threat,
+greedy_nearest), the rolling cplex family (pocplex, rh-cplex) and the
+learning policies (marl, mappo, qmix, iql) automatically run with the
+per-step CPLEX reference (--dn-reference semantics) so their gap
+(metric iii) is computed; `random` accepts --p-hold / --policy-seed for
+its private random stream.
 """
 
 import argparse
@@ -181,7 +186,11 @@ def main(argv=None):
     ap.add_argument("--split", choices=["train", "val", "test"], default="test",
                     help="instance split from the MANIFEST (test = s01-s02, "
                          "the formal comparison benchmark)")
-    ap.add_argument("--policy", choices=["none", "greedy", "cplex", "marl"],
+    ap.add_argument("--policy", choices=["none", "greedy", "cplex",
+                                          "pocplex", "marl",
+                                          "greedy_threat", "greedy_nearest",
+                                          "random", "rh-cplex",
+                                          "mappo", "qmix", "iql"],
                     required=True)
     ap.add_argument("--seeds", type=int, default=30,
                     help="Monte-Carlo seeds per instance (v3 protocol: 30)")
@@ -199,33 +208,50 @@ def main(argv=None):
     ap.add_argument("--log", default=None,
                     help="optional terminal log file, e.g. logs/e13_run.log")
     ap.add_argument("--model", default=None,
-                    help="marl checkpoint path (required for --policy marl)")
+                    help="checkpoint path (required for --policy marl/"
+                         "mappo/qmix/iql)")
     ap.add_argument("--device", default="auto",
                     choices=["auto", "mps", "cpu"],
-                    help="marl inference device")
+                    help="marl/mappo/qmix inference device")
     ap.add_argument("--no-ref", action="store_true",
                     help="skip the per-step CPLEX reference (leak-only "
                          "runs, e.g. generalization snapshots)")
+    ap.add_argument("--p-hold", type=float, default=None,
+                    help="random policy hold-fire probability (policy "
+                         "default 0.3; E22 runs the 0.3 / 0.0 arms)")
+    ap.add_argument("--policy-seed", type=int, default=0,
+                    help="seed of the policy's private RandomState "
+                         "(random policy stream; default 0)")
+    ap.add_argument("--tmp-dir", default=None,
+                    help="scratch dir for solver instances (default "
+                         "<output>/tmp; point at /tmp/... to keep bulk "
+                         "deletes out of the project tree)")
     args = ap.parse_args(argv)
 
     instances = read_split(args.manifest, args.split)
     log = make_log(args.log)
     os.makedirs(args.output, exist_ok=True)
-    tmp_dir = os.path.join(args.output, "tmp")
+    tmp_dir = args.tmp_dir or os.path.join(args.output, "tmp")
     os.makedirs(tmp_dir, exist_ok=True)
 
     solver = {"delta": args.delta, "timelimit": args.timelimit,
               "threads": args.threads, "python": args.python}
-    # greedy automatically runs with the per-step CPLEX reference
-    # (--dn-reference semantics); cplex IS the reference; none needs
-    # nothing; marl needs the reference for the gap metric (disable for
-    # generalization snapshots via --no-ref)
-    with_ref = args.policy in ("greedy", "marl") and not args.no_ref
+    # greedy family + rolling cplex automatically run with the per-step
+    # CPLEX reference (--dn-reference semantics); cplex IS the reference;
+    # none/random need nothing; marl/pocplex and the learning baselines
+    # (mappo/qmix/iql) need the reference for the gap metric (disable
+    # for generalization snapshots via --no-ref)
+    with_ref = args.policy in ("greedy", "marl", "pocplex",
+                               "greedy_threat", "greedy_nearest",
+                               "rh-cplex", "mappo", "qmix", "iql") \
+        and not args.no_ref
     policy = dn_policies.build_policy(args.policy, solver=solver,
                                       tmp_dir=tmp_dir,
                                       with_reference=with_ref,
                                       model_path=args.model,
-                                      device=args.device)
+                                      device=args.device,
+                                      p_hold=args.p_hold,
+                                      policy_seed=args.policy_seed)
 
     log("DN-WTA v3 family evaluation")
     log("  split=%s instances=%s" % (args.split, ", ".join(instances)))
@@ -276,6 +302,8 @@ def main(argv=None):
                    "seeds": args.seeds, "seed_base": args.seed_base,
                    "timelimit": args.timelimit, "delta": args.delta,
                    "threads": args.threads, "dn_reference": with_ref,
+                   "p_hold": args.p_hold, "policy_seed": args.policy_seed,
+                   "model": args.model,
                    "data_dir": args.data_dir, "instances": instances},
         "environment": {"python": args.python, "argv": sys.argv},
         "source_md5": {

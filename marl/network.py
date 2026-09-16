@@ -78,6 +78,52 @@ class MarlNet(nn.Module):
         return torch.cat([s_p.unsqueeze(0), s_j]), z_i, k, v, z_g
 
     # ------------------------------------------------------------------
+    def forward_batch(self, x, q, g, pad_mask=None):
+        """Batched twin of forward() (A1): x: [B,L,10], q: [B,5],
+        g: [B,3], pad_mask: [B,L] bool (True = real target row).
+
+        Returns logits [B, 1+L] with hold FIRST. Padded target slots get
+        -inf so downstream softmax/gather/entropy are unaffected. Padded
+        rows are excluded from attention via key_padding_mask, so real
+        rows see EXACTLY the tokens the per-sample forward() would see
+        (numerical equivalence up to float round-off; asserted in the
+        selftest). No new parameters - assert_params unchanged.
+        """
+        B, L, _ = x.shape
+        xe = self.x_proj(x)                                 # [B,L,d]
+        qe = self.q_proj(q).unsqueeze(1)                    # [B,1,d]
+        ge = self.g_proj(g).unsqueeze(1)                    # [B,1,d]
+        tokens = torch.cat([xe, qe, ge], dim=1)             # [B,L+2,d]
+        kpm = None
+        out_pad = None
+        if pad_mask is not None:
+            # True marks PAD positions the attention must ignore; the
+            # target tokens occupy cols 0..L-1, the platform/global tokens
+            # (cols L, L+1) are always real
+            kpm = torch.cat(
+                [~pad_mask,
+                 torch.zeros(B, 2, dtype=torch.bool, device=x.device)],
+                dim=1)                                     # [B,L+2]
+            out_pad = torch.cat(
+                [torch.zeros(B, 1, dtype=torch.bool, device=x.device),
+                 ~pad_mask], dim=1)                         # [B,1+L]
+        h, _ = self.attn(tokens, tokens, tokens,
+                         need_weights=False, key_padding_mask=kpm)
+        h = self.norm(tokens + h)
+        k = h[:, :L]                                        # [B,L,d]
+        z_i = h[:, L]                                       # [B,d]
+        z_g = h[:, L + 1]                                   # [B,d]
+        zi_rep = z_i.unsqueeze(1).expand(B, L, self.d)      # [B,L,d]
+        s_j = self.score(torch.cat([zi_rep, k, zi_rep * k],
+                                   dim=-1)).squeeze(-1)     # [B,L]
+        s_p = self.hold(torch.cat([z_i, z_g], dim=-1)
+                        ).squeeze(-1)                       # [B]
+        logits = torch.cat([s_p.unsqueeze(1), s_j], dim=1)  # [B,1+L]
+        if out_pad is not None:
+            logits = logits.masked_fill(out_pad, -float("inf"))
+        return logits
+
+    # ------------------------------------------------------------------
     def params_count(self) -> int:
         return sum(p.numel() for p in self.parameters()
                    if p.requires_grad)
@@ -117,6 +163,32 @@ def _selftest():
 
     # batched forward over 3 platforms (stacked loop - keep it simple)
     _ = [net(x, torch.randn(Q_DIM), g) for _ in range(3)]
+
+    # batched forward_batch vs per-sample forward: ragged L + padding
+    Bs, Lmax = 5, 9
+    lens = [1, 4, 9, 3, 6]
+    xb = torch.zeros(Bs, Lmax, X_DIM)
+    qb = torch.randn(Bs, Q_DIM)
+    gb = torch.randn(Bs, G_DIM)
+    pm = torch.zeros(Bs, Lmax, dtype=torch.bool)
+    for b, Lb in enumerate(lens):
+        xb[b, :Lb] = torch.randn(Lb, X_DIM)
+        pm[b, :Lb] = True
+    logits_b = net.forward_batch(xb, qb, gb, pm)
+    assert logits_b.shape == (Bs, 1 + Lmax)
+    for b, Lb in enumerate(lens):
+        ref, *_ = net(xb[b, :Lb], qb[b], gb[b])
+        got = logits_b[b, :1 + Lb]
+        assert torch.allclose(got, ref, atol=1e-5), \
+            "forward_batch mismatch on row %d" % b
+        assert torch.isfinite(logits_b[b, 1 + Lb:]).sum() == 0, \
+            "pad slots must be -inf"
+    # uniform-length batch without explicit mask == masked version
+    xb2 = xb[:, :4]
+    lb_nomask = net.forward_batch(xb2, qb, gb, None)
+    pm2 = torch.ones(Bs, 4, dtype=torch.bool)
+    lb_mask = net.forward_batch(xb2, qb, gb, pm2)
+    assert torch.allclose(lb_nomask, lb_mask, atol=1e-6)
 
     print("marl/network.py selftest: ALL PASS (params=%d)" % n)
 
