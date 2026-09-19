@@ -1,0 +1,21 @@
+
+==== [pipeline] s2_greedy attempt 1 at 2026-09-18 19:48:45 ====
+DN-WTA v3 family evaluation
+  split=test instances=dn_10x100_K10_s01.txt, dn_10x100_K10_s02.txt
+  policy=greedy (with per-step CPLEX reference) seeds=30 (base 42) timelimit=30s
+
+=== dn_10x100_K10_s01.txt (m=10 n=100 K=10 mu=7 pool=70 total_value=8157) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.757276 +- 0.012469 | shots 70.0 | destroyed value 1979.9
+
+=== dn_10x100_K10_s02.txt (m=10 n=100 K=10 mu=7 pool=70 total_value=7616) ===
+  MC runs done: 10/30
+  MC runs done: 20/30
+  MC runs done: 30/30
+  leak rate 0.701243 +- 0.016366 | shots 70.0 | destroyed value 2275.3
+[cleanup] removed tmp dir output/e38_v5_greedy/tmp
+
+reports written: output/e38_v5_greedy/family_report.json, output/e38_v5_greedy/family_report.md
+family leak rate: 0.7293 +- 0.0280 [worst 0.7573]

@@ -28,6 +28,7 @@
 | `e20_retrain/` `e20_eval/` `e20_gen/` | E20 修复后环境干净重训（c005/c010）+ 终评 + 泛化 | c010 test 0.5963 / c005 0.6032；val 0.6120 | `marl/train.py`（resume-from） |
 | `e21_v4_cplex_probe/` | V4 规模（5×100）CPLEX 探针 | leak 0.6981、gap≡0；弹药 t=5 耗尽与 v3 节奏一致 | `data/dn-data-v4/` |
 | `e22_baselines/` | 基线扩展：greedy_nearest / greedy_threat / random 两档 | 0.8922 / 0.8594 / 0.8724 / 0.8466 | `dwta/dn_policies.py` |
+| `e26_v5_{none,cplex,greedy}_probe/` | V5 数据集（10×100，池 80）基线探针（test×5 seeds） | none 1.0000；greedy 0.6843±0.0415；**cplex 0.2938±0.0260**（弹药 t=7 耗尽、晚窗占比 0.81–0.93） | `data/dn-data-v5/`（见 `DN-WTA_v5_数据集说明.md`） |
 | `e23_rhcplex/` | 滚动时域（receding horizon）CPLEX 基线 | leak 0.6808（优于 myopic 0.7085） | `dwta/dn_policies.py` |
 | `e24_mappo*` | E24 MAPPO 基线（训练+终评+泛化） | test leak 0.6014；3.46M env steps / 3000 iters | `marl/train_mappo.py` |
 | `e25_qmix*` | E25 QMIX 基线（训练+终评+泛化） | test leak 0.8262；1.81M steps 早停 | `marl/train_qmix.py` |

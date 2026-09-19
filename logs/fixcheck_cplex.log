@@ -1,0 +1,15 @@
+DN-WTA v3 family evaluation
+  split=test instances=dn_5x100_K10_s01.txt, dn_5x100_K10_s02.txt
+  policy=cplex seeds=2 (base 42) timelimit=30s
+
+=== dn_5x100_K10_s01.txt (m=5 n=100 K=10 mu=6 pool=30 total_value=8157) ===
+  MC runs done: 2/2
+  leak rate 0.720485 +- 0.006497 | shots 30.0 | destroyed value 2280.0
+
+=== dn_5x100_K10_s02.txt (m=5 n=100 K=10 mu=6 pool=30 total_value=7616) ===
+  MC runs done: 2/2
+  leak rate 0.676799 +- 0.016216 | shots 30.0 | destroyed value 2461.5
+[cleanup] removed tmp dir output/fixcheck_cplex/tmp
+
+reports written: output/fixcheck_cplex/family_report.json, output/fixcheck_cplex/family_report.md
+family leak rate: 0.6986 +- 0.0218 [worst 0.7205]

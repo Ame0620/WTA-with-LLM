@@ -1,0 +1,19 @@
+{
+  "generated_at": "2026-09-18 21:16:49",
+  "ecmappo": {
+    "per_iter_sec": 18.6,
+    "est_2500x96_hours": 12.92,
+    "tier": {
+      "iters": 1930,
+      "episodes": 96
+    },
+    "sample_ratio_vs_v4_full": 0.772,
+    "sample_ratio_warning": "wall-clock bound: joint samples < 80% of the v4 full tier (240k ep); reported as-is per §3.3 '下调 iters 保墙钟'",
+    "decision": "down_1930x96"
+  },
+  "ga_latency": {
+    "p50": 0.0097581148147583,
+    "p90": 0.014305988947550457
+  },
+  "rule": "est < 8h -> up 3000x96; <= 10.5h -> keep 2500x96; else downscale iters (ep fixed 96) to fit 95% of the 10.5h wall budget"
+}

@@ -61,7 +61,7 @@ GAMMA = 0.99
 LR = 3e-4
 PPO_EPOCHS = 2
 MINIBATCH = 256
-WALL_LIMIT_SEC = 24 * 3600.0
+WALL_LIMIT_SEC = 2.5 * 3600.0     # v4 3h-tier baseline: <=2.5h train wall
 
 
 class Trainer(object):
@@ -82,10 +82,13 @@ class Trainer(object):
                                        device=args.device, greedy=False,
                                        seed=args.seed, training=True)
         self.collector.net = self.actor
-        self.train_dns = [DNInstance(os.path.join(DATA_DIR, f))
-                          for f in TRAIN_INSTS]
-        self.val_dns = [DNInstance(os.path.join(DATA_DIR, f))
-                        for f in VAL_INSTS]
+        # v4 migration: split discovered from --data-dir (protocol fixed)
+        from marl.data_split import discover_split, load_instances
+        data_dir = getattr(args, "data_dir", None) or DATA_DIR
+        train_files, val_files = discover_split(data_dir)
+        self.train_dns = load_instances(data_dir, train_files)
+        self.val_dns = load_instances(data_dir, val_files)
+        self.n_agents = self.train_dns[0].m
         self.seed_counter = 100001
         self.env_steps = 0
         self.best_val = float("inf")
@@ -331,19 +334,86 @@ class Trainer(object):
         }, path)
 
     # ------------------------------------------------------------------
+    def save_last(self, path, it, elapsed, eval_points=0, bad_points=0):
+        """v5 §6.1.3 periodic resumable checkpoint (every eval point +
+        <= 10 min cadence): weights, optimizer states, counters and
+        elapsed wall time for watchdog restarts."""
+        torch.save({
+            "state_dict": self.actor.state_dict(),
+            "critic_state_dict": self.critic.state_dict(),
+            "kind": "mappo",
+            "opt_a": self.opt_a.state_dict(),
+            "opt_c": self.opt_c.state_dict(),
+            "iter": it,
+            "best_val": (None if self.best_val == float("inf")
+                         else self.best_val),
+            "eval_points": eval_points,
+            "bad_points": bad_points,
+            "seed_counter": self.seed_counter,
+            "env_steps": self.env_steps,
+            "elapsed_sec": elapsed,
+            "feature_spec": {"x": 8, "q": 5, "g": 3, "drop_m1": True},
+            "params_count": self.n_params,
+        }, path)
+
+    def _load_weights(self, ckpt):
+        self.actor.load_state_dict(ckpt["state_dict"])
+        if "critic_state_dict" in ckpt:
+            self.critic.load_state_dict(ckpt["critic_state_dict"])
+        self.eval_pol.net = self.actor
+        self.collector.net = self.actor
+
+    # ------------------------------------------------------------------
     def run(self):
         args = self.args
         t_start = time.time()
         ckpt_path = os.path.join(args.output, "best.pt")
+        last_path = os.path.join(args.output, "last.pt")
         it = 0
         eval_points = 0
         bad_points = 0
         stopped = None
+        resume_elapsed = 0.0
+        if getattr(args, "resume", False):
+            src = last_path if os.path.exists(last_path) else ckpt_path
+            if not os.path.exists(src):
+                raise FileNotFoundError(
+                    "--resume needs %s or %s (nothing to resume from)"
+                    % (last_path, ckpt_path))
+            ck = torch.load(src, map_location="cpu")
+            self._load_weights(ck)
+            it = int(ck.get("iter") or 0)
+            if ck.get("best_val") is not None:
+                self.best_val = float(ck["best_val"])
+            if "opt_a" in ck:      # full resumable ckpt (last.pt format)
+                try:
+                    self.opt_a.load_state_dict(ck["opt_a"])
+                    self.opt_c.load_state_dict(ck["opt_c"])
+                except Exception as e:
+                    print("[mappo-train] optimizer state not restored (%s); "
+                          "continuing with fresh optimizers" % e, flush=True)
+                self.seed_counter = int(ck.get("seed_counter",
+                                                self.seed_counter))
+                self.env_steps = int(ck.get("env_steps", self.env_steps))
+                resume_elapsed = float(ck.get("elapsed_sec", 0.0))
+                eval_points = int(ck.get("eval_points", 0))
+                bad_points = int(ck.get("bad_points", 0))
+            print("[mappo-train] resume from %s: iter=%d best_val=%.4f "
+                  "elapsed=%.0fs" % (src, it, self.best_val, resume_elapsed),
+                  flush=True)
         epi = args.episodes_per_iter
+        wall_limit_sec = float(getattr(args, "wall_limit", 2.5)) * 3600.0
+        last_hb = time.time()
+        last_ckpt = time.time()
         while it < args.iters:
-            if time.time() - t_start > WALL_LIMIT_SEC:
-                stopped = "wall_limit_24h"
+            elapsed = resume_elapsed + (time.time() - t_start)
+            if elapsed > wall_limit_sec:
+                stopped = "wall_limit"
                 break
+            if time.time() - last_hb > 60.0:
+                print("[hb] iter=%d elapsed=%.0fs budget=%.1fh"
+                      % (it, elapsed, wall_limit_sec / 3600.0), flush=True)
+                last_hb = time.time()
             episodes = []
             train_leaks = []
             for _ in range(epi):
@@ -357,6 +427,11 @@ class Trainer(object):
             flat = self.process_batch(episodes)
             pl, vl = self.ppo_update(flat)
             it += 1
+            if time.time() - last_ckpt > 600.0:   # §6.1.3: <= 10 min
+                self.save_last(last_path, it,
+                               resume_elapsed + (time.time() - t_start),
+                               eval_points, bad_points)
+                last_ckpt = time.time()
             if it % args.eval_every == 0 or it == args.iters:
                 val_mean, val_std = self.evaluate_val()
                 eval_points += 1
@@ -366,7 +441,8 @@ class Trainer(object):
                     "train_leak": sum(train_leaks) / len(train_leaks),
                     "val_leak_mean": val_mean,
                     "val_leak_std": val_std,
-                    "wall_sec": round(time.time() - t_start, 1),
+                    "wall_sec": round(resume_elapsed
+                                      + (time.time() - t_start), 1),
                     "tau": round(self.collector.tau, 3),
                     "policy_loss": round(pl, 6),
                     "value_loss": round(vl, 6),
@@ -387,10 +463,18 @@ class Trainer(object):
                     bad_points = 0
                 else:
                     bad_points += 1
-                    if bad_points >= args.patience:
-                        stopped = "early_stop"
-                        break
-        wall = time.time() - t_start
+                self.save_last(last_path, it,
+                               resume_elapsed + (time.time() - t_start),
+                               eval_points, bad_points)
+                last_ckpt = time.time()
+                if bad_points >= args.patience:
+                    stopped = "early_stop"
+                    break
+        wall = resume_elapsed + (time.time() - t_start)
+        try:      # keep last.pt fresh for post-stop restarts
+            self.save_last(last_path, it, wall, eval_points, bad_points)
+        except Exception:
+            pass
         summary = {
             "total_wall_sec": round(wall, 1),
             "env_steps": self.env_steps,
@@ -413,15 +497,28 @@ class Trainer(object):
 def main(argv=None):
     here = os.path.dirname(os.path.abspath(__file__))
     ap = argparse.ArgumentParser(description="E24 MAPPO baseline training")
-    ap.add_argument("--iters", type=int, default=3000,
-                    help="same budget cap as marl/train.py (A2)")
+    ap.add_argument("--iters", type=int, default=1200,
+                    help="v5 3h-tier baseline cap (1200 x 12 = 14.4k ep)")
     ap.add_argument("--eval-every", type=int, default=25)
-    ap.add_argument("--patience", type=int, default=60,
-                    help="early-stop patience in EVAL POINTS")
-    ap.add_argument("--episodes-per-iter", type=int, default=128,
-                    help="same sampling volume as marl e15/e20 (A2)")
+    ap.add_argument("--patience", type=int, default=12,
+                    help="early-stop patience in EVAL POINTS (3h tier)")
+    ap.add_argument("--episodes-per-iter", type=int, default=12,
+                    help="v5 3h-tier sampling volume (m = 10 doubles the "
+                         "per-step cost vs v4's 24; 12 keeps the tier "
+                         "budget; same tier as qmix/maddpg)")
+    ap.add_argument("--wall-limit", type=float, default=2.5,
+                    help="v5 §6.1.3: train wall-clock cap in HOURS "
+                         "(default 2.5 = 3h tier minus 0.5h eval reserve)")
+    ap.add_argument("--resume", action="store_true",
+                    help="v5 §6.1.3: resume from <output>/last.pt if "
+                         "present (weights + optimizers + counters + "
+                         "elapsed wall, budget-aware), else fall back to "
+                         "best.pt (weights + iter + best_val)")
     ap.add_argument("--device", default="auto",
                     choices=["auto", "mps", "cpu"])
+    ap.add_argument("--data-dir", default=DATA_DIR,
+                    help="instance dir (default v3 dn_3x50; v4 runs pass "
+                         "data/dn-data-v4 - split protocol is fixed)")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--anneal-iters", type=int, default=2000)
     ap.add_argument("--c-invalid", type=float, default=None,

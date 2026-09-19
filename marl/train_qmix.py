@@ -72,8 +72,9 @@ GAMMA = 0.99
 LR = 3e-4
 BATCH = 512
 MIX_STATE_DIM = 8          # pooled true target features (5) + glob (3)
-N_AGENTS = 3
-WALL_LIMIT_SEC = 24 * 3600.0
+N_AGENTS = 3               # legacy constant - runtime value is derived
+                           # from the dataset (Trainer.n_agents)
+WALL_LIMIT_SEC = 2.5 * 3600.0     # v4 3h-tier baseline: <=2.5h train wall
 
 
 def mix_state(tgt, glob):
@@ -91,10 +92,17 @@ class Trainer(object):
             "cpu") if args.device == "cpu" else self._pick(args.device)
         self.agent = PoolMLPNet().to(self.device)
         self.n_params = assert_agent_params(self.agent)
+        # v4 migration: n_agents derived from --data-dir (v3: 3, v4: 5)
+        from marl.data_split import discover_split, load_instances
+        data_dir = getattr(args, "data_dir", None) or DATA_DIR
+        train_files, val_files = discover_split(data_dir)
+        self.train_dns = load_instances(data_dir, train_files)
+        self.val_dns = load_instances(data_dir, val_files)
+        self.n_agents = self.train_dns[0].m
         self.mixer = None
         if self.algo == "qmix":
             self.mixer = QMixer(state_dim=MIX_STATE_DIM,
-                                n_agents=N_AGENTS).to(self.device)
+                                n_agents=self.n_agents).to(self.device)
         self.agent_target = copy.deepcopy(self.agent)
         self.mixer_target = copy.deepcopy(self.mixer) if self.mixer \
             is not None else None
@@ -118,10 +126,6 @@ class Trainer(object):
         self.collector.net = self.agent
         self.collector.tau = 1.0            # exploration via eps-greedy
 
-        self.train_dns = [DNInstance(os.path.join(DATA_DIR, f))
-                          for f in TRAIN_INSTS]
-        self.val_dns = [DNInstance(os.path.join(DATA_DIR, f))
-                        for f in VAL_INSTS]
         self.seed_counter = 200001
         self.env_steps = 0
         self.best_val = float("inf")
@@ -203,18 +207,18 @@ class Trainer(object):
                 for e in tr["next"]["agents"]:
                     if not e.get("empty"):
                         Ln = max(Ln, e["x"].shape[0])
-        xc = torch.zeros(3 * B, Lc, 8)
-        pc = torch.zeros(3 * B, Lc, dtype=torch.bool)
-        mc = torch.zeros(3 * B, Lc, dtype=torch.bool)
-        qc = torch.zeros(3 * B, 5)
-        gc = torch.zeros(3 * B, 3)
-        picks = torch.zeros(3 * B, dtype=torch.long)
+        xc = torch.zeros(self.n_agents * B, Lc, 8)
+        pc = torch.zeros(self.n_agents * B, Lc, dtype=torch.bool)
+        mc = torch.zeros(self.n_agents * B, Lc, dtype=torch.bool)
+        qc = torch.zeros(self.n_agents * B, 5)
+        gc = torch.zeros(self.n_agents * B, 3)
+        picks = torch.zeros(self.n_agents * B, dtype=torch.long)
         if has_next:
-            xn = torch.zeros(3 * B, Ln, 8)
-            pn = torch.zeros(3 * B, Ln, dtype=torch.bool)
-            mn = torch.zeros(3 * B, Ln, dtype=torch.bool)
-            qn = torch.zeros(3 * B, 5)
-            gn = torch.zeros(3 * B, 3)
+            xn = torch.zeros(self.n_agents * B, Ln, 8)
+            pn = torch.zeros(self.n_agents * B, Ln, dtype=torch.bool)
+            mn = torch.zeros(self.n_agents * B, Ln, dtype=torch.bool)
+            qn = torch.zeros(self.n_agents * B, 5)
+            gn = torch.zeros(self.n_agents * B, 3)
         else:
             xn = pn = mn = qn = gn = None
         sc_t = torch.zeros(B, MIX_STATE_DIM)
@@ -228,7 +232,7 @@ class Trainer(object):
             rs[b] = tr["r"]
             ds[b] = tr["done"]
             for a_i, e in enumerate(st["agents"]):
-                r3 = 3 * b + a_i
+                r3 = self.n_agents * b + a_i
                 if e.get("empty"):
                     picks[r3] = 0        # hold; logits [1] at L=0
                     continue
@@ -243,7 +247,7 @@ class Trainer(object):
                 nx = tr["next"]
                 sc_n[b] = mix_state(nx["tgt"], nx["glob"])
                 for a_i, e in enumerate(nx["agents"]):
-                    r3 = 3 * b + a_i
+                    r3 = self.n_agents * b + a_i
                     if e.get("empty"):
                         continue
                     L = e["x"].shape[0]
@@ -266,7 +270,7 @@ class Trainer(object):
         masked = logits.masked_fill(~feas, -float("inf"))
         qs = masked.gather(1, picks.to(logits.device)
                            .unsqueeze(1)).squeeze(1)
-        return qs.view(-1, N_AGENTS), masked
+        return qs.view(-1, self.n_agents), masked
 
     def _td_targets(self, xn, pn, mn, qn, gn, sc_n, rs, ds):
         """Double-Q TD(0) targets: ONLINE agent picks the per-agent
@@ -285,13 +289,13 @@ class Trainer(object):
                                           gn.to(dev), a_star)
             if self.algo == "qmix":
                 qs_star = masked_tg.gather(1, a_star.unsqueeze(1)) \
-                    .squeeze(1).view(-1, N_AGENTS)
+                    .squeeze(1).view(-1, self.n_agents)
                 q_tot_next = self.mixer_target(qs_star, sc_n.to(dev))
                 return rs.to(dev) + GAMMA * (1.0 - ds.to(dev)) \
                     * q_tot_next
             # IQL: independent per-agent targets on the same team reward
             qs_star = masked_tg.gather(1, a_star.unsqueeze(1)) \
-                .squeeze(1).view(-1, N_AGENTS)
+                .squeeze(1).view(-1, self.n_agents)
             return rs.to(dev).unsqueeze(1) + GAMMA \
                 * (1.0 - ds.to(dev)).unsqueeze(1) * qs_star
 
@@ -378,19 +382,103 @@ class Trainer(object):
         torch.save(ckpt, path)
 
     # ------------------------------------------------------------------
+    def save_last(self, path, it, elapsed, eval_points=0, bad_points=0):
+        """v5 §6.1.3 periodic resumable checkpoint (every eval point +
+        <= 10 min cadence). Buffer is NOT serialised (too large); restarts
+        re-collect - only optimizer/net/counter state is restored."""
+        ckpt = {
+            "state_dict": self.agent.state_dict(),
+            "kind": self.algo,
+            "opt": self.opt.state_dict(),
+            "iter": it,
+            "best_val": (None if self.best_val == float("inf")
+                         else self.best_val),
+            "eval_points": eval_points,
+            "bad_points": bad_points,
+            "seed_counter": self.seed_counter,
+            "env_steps": self.env_steps,
+            "elapsed_sec": elapsed,
+            "feature_spec": {"x": 8, "q": 5, "g": 3, "drop_m1": True},
+            "params_count": self.n_params,
+        }
+        if self.mixer is not None:
+            ckpt["mixer_state_dict"] = self.mixer.state_dict()
+            ckpt["mixer_target_state_dict"] = \
+                self.mixer_target.state_dict()
+        ckpt["agent_target_state_dict"] = \
+            self.agent_target.state_dict()
+        torch.save(ckpt, path)
+
+    def _load_weights(self, ckpt):
+        self.agent.load_state_dict(ckpt["state_dict"])
+        if "agent_target_state_dict" in ckpt:
+            self.agent_target.load_state_dict(
+                ckpt["agent_target_state_dict"])
+        elif "state_dict" in ckpt:
+            self.agent_target.load_state_dict(ckpt["state_dict"])
+        if self.mixer is not None and "mixer_state_dict" in ckpt:
+            self.mixer.load_state_dict(ckpt["mixer_state_dict"])
+            if "mixer_target_state_dict" in ckpt:
+                self.mixer_target.load_state_dict(
+                    ckpt["mixer_target_state_dict"])
+            else:
+                self.mixer_target.load_state_dict(
+                    ckpt["mixer_state_dict"])
+        self.eval_pol.net = self.agent
+        self.collector.net = self.agent
+
+    # ------------------------------------------------------------------
     def run(self):
         args = self.args
         t_start = time.time()
         ckpt_path = os.path.join(args.output, "best.pt")
+        last_path = os.path.join(args.output, "last.pt")
         it = 0
         eval_points = 0
         bad_points = 0
         stopped = None
+        resume_elapsed = 0.0
+        if getattr(args, "resume", False):
+            src = last_path if os.path.exists(last_path) else ckpt_path
+            if not os.path.exists(src):
+                raise FileNotFoundError(
+                    "--resume needs %s or %s (nothing to resume from)"
+                    % (last_path, ckpt_path))
+            ck = torch.load(src, map_location="cpu")
+            self._load_weights(ck)
+            it = int(ck.get("iter") or 0)
+            if ck.get("best_val") is not None:
+                self.best_val = float(ck["best_val"])
+            if "opt" in ck:        # full resumable ckpt (last.pt format)
+                try:
+                    self.opt.load_state_dict(ck["opt"])
+                except Exception as e:
+                    print("[qmix-train] optimizer state not restored (%s); "
+                          "continuing with a fresh optimizer" % e,
+                          flush=True)
+                self.seed_counter = int(ck.get("seed_counter",
+                                                self.seed_counter))
+                self.env_steps = int(ck.get("env_steps", self.env_steps))
+                resume_elapsed = float(ck.get("elapsed_sec", 0.0))
+                eval_points = int(ck.get("eval_points", 0))
+                bad_points = int(ck.get("bad_points", 0))
+            print("[%s-train] resume from %s: iter=%d best_val=%.4f "
+                  "elapsed=%.0fs"
+                  % (self.algo, src, it, self.best_val, resume_elapsed),
+                  flush=True)
         epi = args.episodes_per_iter
+        wall_limit_sec = float(getattr(args, "wall_limit", 2.5)) * 3600.0
+        last_hb = time.time()
+        last_ckpt = time.time()
         while it < args.iters:
-            if time.time() - t_start > WALL_LIMIT_SEC:
-                stopped = "wall_limit_24h"
+            elapsed = resume_elapsed + (time.time() - t_start)
+            if elapsed > wall_limit_sec:
+                stopped = "wall_limit"
                 break
+            if time.time() - last_hb > 60.0:
+                print("[hb] iter=%d elapsed=%.0fs budget=%.1fh"
+                      % (it, elapsed, wall_limit_sec / 3600.0), flush=True)
+                last_hb = time.time()
             train_leaks = []
             for _ in range(epi):
                 dn = self.train_dns[(it * epi + _) % len(self.train_dns)]
@@ -402,6 +490,11 @@ class Trainer(object):
             it += 1
             if it % args.target_update == 0:
                 self._sync_targets()
+            if time.time() - last_ckpt > 600.0:   # §6.1.3: <= 10 min
+                self.save_last(last_path, it,
+                               resume_elapsed + (time.time() - t_start),
+                               eval_points, bad_points)
+                last_ckpt = time.time()
             if it % args.eval_every == 0 or it == args.iters:
                 val_mean, val_std = self.evaluate_val()
                 eval_points += 1
@@ -411,7 +504,8 @@ class Trainer(object):
                     "train_leak": sum(train_leaks) / len(train_leaks),
                     "val_leak_mean": val_mean,
                     "val_leak_std": val_std,
-                    "wall_sec": round(time.time() - t_start, 1),
+                    "wall_sec": round(resume_elapsed
+                                      + (time.time() - t_start), 1),
                     "eps": round(eps, 4),
                     "td_loss": round(loss, 6),
                     "batches": nb,
@@ -434,10 +528,18 @@ class Trainer(object):
                     bad_points = 0
                 else:
                     bad_points += 1
-                    if bad_points >= args.patience:
-                        stopped = "early_stop"
-                        break
-        wall = time.time() - t_start
+                self.save_last(last_path, it,
+                               resume_elapsed + (time.time() - t_start),
+                               eval_points, bad_points)
+                last_ckpt = time.time()
+                if bad_points >= args.patience:
+                    stopped = "early_stop"
+                    break
+        wall = resume_elapsed + (time.time() - t_start)
+        try:      # keep last.pt fresh for post-stop restarts
+            self.save_last(last_path, it, wall, eval_points, bad_points)
+        except Exception:
+            pass
         summary = {
             "total_wall_sec": round(wall, 1),
             "env_steps": self.env_steps,
@@ -464,13 +566,24 @@ def main(argv=None):
     ap = argparse.ArgumentParser(
         description="E25 QMIX (or C1 IQL) baseline training")
     ap.add_argument("--algo", choices=["qmix", "iql"], default="qmix")
-    ap.add_argument("--iters", type=int, default=3000,
-                    help="same budget cap as marl/train.py (A2)")
+    ap.add_argument("--iters", type=int, default=1200,
+                    help="v5 3h-tier baseline cap (1200 x 12 = 14.4k ep)")
     ap.add_argument("--eval-every", type=int, default=25)
-    ap.add_argument("--patience", type=int, default=60,
-                    help="early-stop patience in EVAL POINTS")
-    ap.add_argument("--episodes-per-iter", type=int, default=128,
-                    help="same sampling volume as marl e15/e20 (A2)")
+    ap.add_argument("--patience", type=int, default=12,
+                    help="early-stop patience in EVAL POINTS (3h tier)")
+    ap.add_argument("--episodes-per-iter", type=int, default=12,
+                    help="v5 3h-tier sampling volume (m = 10 doubles the "
+                         "per-step cost vs v4's 24; 12 keeps the tier "
+                         "budget; same tier as mappo/maddpg)")
+    ap.add_argument("--wall-limit", type=float, default=2.5,
+                    help="v5 §6.1.3: train wall-clock cap in HOURS "
+                         "(default 2.5 = 3h tier minus 0.5h eval reserve)")
+    ap.add_argument("--resume", action="store_true",
+                    help="v5 §6.1.3: resume from <output>/last.pt if "
+                         "present (nets + targets + optimizer + counters "
+                         "+ elapsed wall, budget-aware), else fall back to "
+                         "best.pt (weights + iter + best_val); replay "
+                         "buffer is re-collected")
     ap.add_argument("--batches-per-iter", type=int, default=4,
                     help="gradient batches of 512 transitions per iter")
     ap.add_argument("--buffer-episodes", type=int, default=10000)
@@ -479,6 +592,9 @@ def main(argv=None):
     ap.add_argument("--anneal-iters", type=int, default=2000)
     ap.add_argument("--device", default="auto",
                     choices=["auto", "mps", "cpu"])
+    ap.add_argument("--data-dir", default=DATA_DIR,
+                    help="instance dir (default v3 dn_3x50; v4 runs pass "
+                         "data/dn-data-v4 - split protocol is fixed)")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--c-invalid", type=float, default=None,
                     help="invalid-engagement penalty (default reward.py "

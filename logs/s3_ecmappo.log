@@ -1,0 +1,467 @@
+
+==== [pipeline] s3_ecmappo attempt 1 at 2026-09-18 23:58:51 ====
+device=mps actor_params=28482
+[hb] iter=5 elapsed=62s budget=10.5h
+[hb] iter=10 elapsed=126s budget=10.5h
+[hb] iter=15 elapsed=189s budget=10.5h
+[hb] iter=20 elapsed=251s budget=10.5h
+[iter     25] train 0.6094 | val 0.9395+-0.0153 | tau 0.99 | 318s
+[hb] iter=25 elapsed=318s budget=10.5h
+[hb] iter=30 elapsed=380s budget=10.5h
+[hb] iter=35 elapsed=442s budget=10.5h
+[hb] iter=40 elapsed=504s budget=10.5h
+[hb] iter=45 elapsed=566s budget=10.5h
+[iter     50] train 0.5551 | val 1.0000+-0.0000 | tau 0.99 | 633s
+[hb] iter=50 elapsed=633s budget=10.5h
+[hb] iter=55 elapsed=695s budget=10.5h
+[hb] iter=60 elapsed=757s budget=10.5h
+[hb] iter=65 elapsed=819s budget=10.5h
+[hb] iter=70 elapsed=882s budget=10.5h
+[iter     75] train 0.5072 | val 1.0000+-0.0000 | tau 0.98 | 948s
+[hb] iter=75 elapsed=949s budget=10.5h
+[hb] iter=80 elapsed=1011s budget=10.5h
+[hb] iter=85 elapsed=1073s budget=10.5h
+[hb] iter=90 elapsed=1135s budget=10.5h
+[hb] iter=95 elapsed=1198s budget=10.5h
+[iter    100] train 0.4936 | val 0.8995+-0.0291 | tau 0.98 | 1265s
+[hb] iter=100 elapsed=1265s budget=10.5h
+[hb] iter=105 elapsed=1327s budget=10.5h
+[hb] iter=110 elapsed=1390s budget=10.5h
+[hb] iter=115 elapsed=1452s budget=10.5h
+[hb] iter=120 elapsed=1514s budget=10.5h
+[iter    125] train 0.4823 | val 0.7036+-0.0169 | tau 0.97 | 1581s
+[hb] iter=125 elapsed=1581s budget=10.5h
+[hb] iter=130 elapsed=1644s budget=10.5h
+[hb] iter=135 elapsed=1706s budget=10.5h
+[hb] iter=140 elapsed=1768s budget=10.5h
+[hb] iter=145 elapsed=1830s budget=10.5h
+[iter    150] train 0.4729 | val 0.6448+-0.0229 | tau 0.96 | 1897s
+[hb] iter=150 elapsed=1897s budget=10.5h
+[hb] iter=155 elapsed=1960s budget=10.5h
+[hb] iter=160 elapsed=2022s budget=10.5h
+[hb] iter=165 elapsed=2084s budget=10.5h
+[hb] iter=170 elapsed=2147s budget=10.5h
+[iter    175] train 0.4612 | val 0.6116+-0.0311 | tau 0.96 | 2214s
+[hb] iter=175 elapsed=2214s budget=10.5h
+[hb] iter=180 elapsed=2276s budget=10.5h
+[hb] iter=185 elapsed=2339s budget=10.5h
+[hb] iter=190 elapsed=2401s budget=10.5h
+[hb] iter=195 elapsed=2463s budget=10.5h
+[iter    200] train 0.4585 | val 0.4938+-0.0338 | tau 0.95 | 2533s
+[hb] iter=200 elapsed=2533s budget=10.5h
+[hb] iter=205 elapsed=2599s budget=10.5h
+[hb] iter=210 elapsed=2664s budget=10.5h
+[hb] iter=215 elapsed=2728s budget=10.5h
+[hb] iter=220 elapsed=2790s budget=10.5h
+[iter    225] train 0.4560 | val 0.4994+-0.0332 | tau 0.94 | 2857s
+[hb] iter=225 elapsed=2857s budget=10.5h
+[hb] iter=230 elapsed=2919s budget=10.5h
+[hb] iter=235 elapsed=2981s budget=10.5h
+[hb] iter=240 elapsed=3043s budget=10.5h
+[hb] iter=245 elapsed=3105s budget=10.5h
+[iter    250] train 0.4572 | val 0.4627+-0.0231 | tau 0.94 | 3172s
+[hb] iter=250 elapsed=3172s budget=10.5h
+[hb] iter=255 elapsed=3234s budget=10.5h
+[hb] iter=260 elapsed=3296s budget=10.5h
+[hb] iter=265 elapsed=3358s budget=10.5h
+[hb] iter=270 elapsed=3419s budget=10.5h
+[iter    275] train 0.4704 | val 0.4960+-0.0506 | tau 0.93 | 3486s
+[hb] iter=275 elapsed=3486s budget=10.5h
+[hb] iter=280 elapsed=3547s budget=10.5h
+[hb] iter=285 elapsed=3609s budget=10.5h
+[hb] iter=290 elapsed=3671s budget=10.5h
+[hb] iter=295 elapsed=3733s budget=10.5h
+[iter    300] train 0.4512 | val 0.4922+-0.0352 | tau 0.93 | 3800s
+[hb] iter=300 elapsed=3800s budget=10.5h
+[hb] iter=305 elapsed=3862s budget=10.5h
+[hb] iter=310 elapsed=3924s budget=10.5h
+[hb] iter=315 elapsed=3986s budget=10.5h
+[hb] iter=320 elapsed=4048s budget=10.5h
+[iter    325] train 0.4511 | val 0.4483+-0.0280 | tau 0.92 | 4114s
+[hb] iter=325 elapsed=4114s budget=10.5h
+[hb] iter=330 elapsed=4176s budget=10.5h
+[hb] iter=335 elapsed=4239s budget=10.5h
+[hb] iter=340 elapsed=4301s budget=10.5h
+[hb] iter=345 elapsed=4363s budget=10.5h
+[iter    350] train 0.4446 | val 0.4785+-0.0346 | tau 0.91 | 4430s
+[hb] iter=350 elapsed=4430s budget=10.5h
+[hb] iter=355 elapsed=4492s budget=10.5h
+[hb] iter=360 elapsed=4554s budget=10.5h
+[hb] iter=365 elapsed=4617s budget=10.5h
+[hb] iter=370 elapsed=4679s budget=10.5h
+[iter    375] train 0.4563 | val 0.4849+-0.0344 | tau 0.91 | 4746s
+[hb] iter=375 elapsed=4746s budget=10.5h
+[hb] iter=380 elapsed=4808s budget=10.5h
+[hb] iter=385 elapsed=4870s budget=10.5h
+[hb] iter=390 elapsed=4932s budget=10.5h
+[hb] iter=395 elapsed=4994s budget=10.5h
+[iter    400] train 0.4744 | val 0.4618+-0.0331 | tau 0.90 | 5060s
+[hb] iter=400 elapsed=5060s budget=10.5h
+[hb] iter=405 elapsed=5122s budget=10.5h
+[hb] iter=410 elapsed=5184s budget=10.5h
+[hb] iter=415 elapsed=5246s budget=10.5h
+[hb] iter=420 elapsed=5308s budget=10.5h
+[iter    425] train 0.4460 | val 0.4849+-0.0269 | tau 0.89 | 5375s
+[hb] iter=425 elapsed=5375s budget=10.5h
+[hb] iter=430 elapsed=5438s budget=10.5h
+[hb] iter=435 elapsed=5500s budget=10.5h
+[hb] iter=440 elapsed=5562s budget=10.5h
+[hb] iter=445 elapsed=5624s budget=10.5h
+[iter    450] train 0.4475 | val 0.4435+-0.0177 | tau 0.89 | 5691s
+[hb] iter=450 elapsed=5691s budget=10.5h
+[hb] iter=455 elapsed=5753s budget=10.5h
+[hb] iter=460 elapsed=5815s budget=10.5h
+[hb] iter=465 elapsed=5877s budget=10.5h
+[hb] iter=470 elapsed=5938s budget=10.5h
+[iter    475] train 0.4550 | val 0.4989+-0.0421 | tau 0.88 | 6005s
+[hb] iter=475 elapsed=6005s budget=10.5h
+[hb] iter=480 elapsed=6067s budget=10.5h
+[hb] iter=485 elapsed=6129s budget=10.5h
+[hb] iter=490 elapsed=6192s budget=10.5h
+[hb] iter=495 elapsed=6254s budget=10.5h
+[iter    500] train 0.4562 | val 0.4525+-0.0360 | tau 0.88 | 6321s
+[hb] iter=500 elapsed=6321s budget=10.5h
+[hb] iter=505 elapsed=6386s budget=10.5h
+[hb] iter=510 elapsed=6452s budget=10.5h
+[hb] iter=515 elapsed=6517s budget=10.5h
+[hb] iter=520 elapsed=6578s budget=10.5h
+[iter    525] train 0.4354 | val 0.4365+-0.0181 | tau 0.87 | 6645s
+[hb] iter=525 elapsed=6645s budget=10.5h
+[hb] iter=530 elapsed=6707s budget=10.5h
+[hb] iter=535 elapsed=6768s budget=10.5h
+[hb] iter=540 elapsed=6830s budget=10.5h
+[hb] iter=545 elapsed=6892s budget=10.5h
+[iter    550] train 0.4670 | val 0.4364+-0.0310 | tau 0.86 | 6959s
+[hb] iter=550 elapsed=6959s budget=10.5h
+[hb] iter=555 elapsed=7021s budget=10.5h
+[hb] iter=560 elapsed=7083s budget=10.5h
+[hb] iter=565 elapsed=7146s budget=10.5h
+[hb] iter=570 elapsed=7208s budget=10.5h
+[iter    575] train 0.4816 | val 0.4634+-0.0423 | tau 0.86 | 7275s
+[hb] iter=575 elapsed=7275s budget=10.5h
+[hb] iter=580 elapsed=7338s budget=10.5h
+[hb] iter=585 elapsed=7400s budget=10.5h
+[hb] iter=590 elapsed=7462s budget=10.5h
+[hb] iter=595 elapsed=7524s budget=10.5h
+[iter    600] train 0.4557 | val 0.4804+-0.0285 | tau 0.85 | 7590s
+[hb] iter=600 elapsed=7590s budget=10.5h
+[hb] iter=605 elapsed=7654s budget=10.5h
+[hb] iter=610 elapsed=7716s budget=10.5h
+[hb] iter=615 elapsed=7778s budget=10.5h
+[hb] iter=620 elapsed=7840s budget=10.5h
+[iter    625] train 0.4487 | val 0.4906+-0.0330 | tau 0.84 | 7907s
+[hb] iter=625 elapsed=7907s budget=10.5h
+[hb] iter=630 elapsed=7970s budget=10.5h
+[hb] iter=635 elapsed=8032s budget=10.5h
+[hb] iter=640 elapsed=8095s budget=10.5h
+[hb] iter=645 elapsed=8158s budget=10.5h
+[iter    650] train 0.4327 | val 0.4903+-0.0267 | tau 0.84 | 8225s
+[hb] iter=650 elapsed=8225s budget=10.5h
+[hb] iter=655 elapsed=8288s budget=10.5h
+[hb] iter=660 elapsed=8350s budget=10.5h
+[hb] iter=665 elapsed=8412s budget=10.5h
+[hb] iter=670 elapsed=8475s budget=10.5h
+[iter    675] train 0.4351 | val 0.4745+-0.0245 | tau 0.83 | 8542s
+[hb] iter=675 elapsed=8542s budget=10.5h
+[hb] iter=680 elapsed=8604s budget=10.5h
+[hb] iter=685 elapsed=8666s budget=10.5h
+[hb] iter=690 elapsed=8728s budget=10.5h
+[hb] iter=695 elapsed=8790s budget=10.5h
+[iter    700] train 0.4403 | val 0.4595+-0.0381 | tau 0.83 | 8857s
+[hb] iter=700 elapsed=8857s budget=10.5h
+[hb] iter=705 elapsed=8919s budget=10.5h
+[hb] iter=710 elapsed=8981s budget=10.5h
+[hb] iter=715 elapsed=9043s budget=10.5h
+[hb] iter=720 elapsed=9106s budget=10.5h
+[iter    725] train 0.4593 | val 0.6166+-0.0271 | tau 0.82 | 9174s
+[hb] iter=725 elapsed=9174s budget=10.5h
+[hb] iter=730 elapsed=9236s budget=10.5h
+[hb] iter=735 elapsed=9299s budget=10.5h
+[hb] iter=740 elapsed=9362s budget=10.5h
+[hb] iter=745 elapsed=9425s budget=10.5h
+[iter    750] train 0.4521 | val 0.5221+-0.0325 | tau 0.81 | 9493s
+[hb] iter=750 elapsed=9493s budget=10.5h
+[hb] iter=755 elapsed=9555s budget=10.5h
+[hb] iter=760 elapsed=9617s budget=10.5h
+[hb] iter=765 elapsed=9680s budget=10.5h
+[hb] iter=770 elapsed=9742s budget=10.5h
+[iter    775] train 0.4382 | val 0.4861+-0.0352 | tau 0.81 | 9809s
+[hb] iter=775 elapsed=9809s budget=10.5h
+[hb] iter=780 elapsed=9872s budget=10.5h
+[hb] iter=785 elapsed=9934s budget=10.5h
+[hb] iter=790 elapsed=9996s budget=10.5h
+[hb] iter=795 elapsed=10059s budget=10.5h
+[iter    800] train 0.4383 | val 0.4462+-0.0233 | tau 0.80 | 10126s
+[hb] iter=800 elapsed=10127s budget=10.5h
+[hb] iter=805 elapsed=10190s budget=10.5h
+[hb] iter=810 elapsed=10255s budget=10.5h
+[hb] iter=815 elapsed=10321s budget=10.5h
+[hb] iter=820 elapsed=10384s budget=10.5h
+[iter    825] train 0.4412 | val 0.4726+-0.0510 | tau 0.79 | 10450s
+[hb] iter=825 elapsed=10450s budget=10.5h
+[hb] iter=830 elapsed=10513s budget=10.5h
+[hb] iter=835 elapsed=10575s budget=10.5h
+[hb] iter=840 elapsed=10638s budget=10.5h
+[hb] iter=845 elapsed=10700s budget=10.5h
+[iter    850] train 0.4715 | val 0.4538+-0.0281 | tau 0.79 | 10767s
+[hb] iter=850 elapsed=10767s budget=10.5h
+[hb] iter=855 elapsed=10829s budget=10.5h
+[hb] iter=860 elapsed=10892s budget=10.5h
+[hb] iter=865 elapsed=10955s budget=10.5h
+[hb] iter=870 elapsed=11018s budget=10.5h
+[iter    875] train 0.4461 | val 0.4503+-0.0293 | tau 0.78 | 11085s
+[hb] iter=875 elapsed=11085s budget=10.5h
+[hb] iter=880 elapsed=11147s budget=10.5h
+[hb] iter=885 elapsed=11209s budget=10.5h
+[hb] iter=890 elapsed=11271s budget=10.5h
+[hb] iter=895 elapsed=11333s budget=10.5h
+[iter    900] train 0.4379 | val 0.5454+-0.0381 | tau 0.78 | 11400s
+[hb] iter=900 elapsed=11401s budget=10.5h
+[hb] iter=905 elapsed=11463s budget=10.5h
+[hb] iter=910 elapsed=11525s budget=10.5h
+[hb] iter=915 elapsed=11588s budget=10.5h
+[hb] iter=920 elapsed=11650s budget=10.5h
+[iter    925] train 0.4307 | val 0.4470+-0.0291 | tau 0.77 | 11718s
+[hb] iter=925 elapsed=11718s budget=10.5h
+[hb] iter=930 elapsed=11780s budget=10.5h
+[hb] iter=935 elapsed=11843s budget=10.5h
+[hb] iter=940 elapsed=11905s budget=10.5h
+[hb] iter=945 elapsed=11968s budget=10.5h
+[iter    950] train 0.4374 | val 0.4385+-0.0216 | tau 0.76 | 12034s
+[hb] iter=950 elapsed=12035s budget=10.5h
+[hb] iter=955 elapsed=12097s budget=10.5h
+[hb] iter=960 elapsed=12159s budget=10.5h
+[hb] iter=965 elapsed=12222s budget=10.5h
+[hb] iter=970 elapsed=12284s budget=10.5h
+[iter    975] train 0.4447 | val 0.4501+-0.0339 | tau 0.76 | 12351s
+[hb] iter=975 elapsed=12351s budget=10.5h
+[hb] iter=980 elapsed=12414s budget=10.5h
+[hb] iter=985 elapsed=12476s budget=10.5h
+[hb] iter=990 elapsed=12539s budget=10.5h
+[hb] iter=995 elapsed=12601s budget=10.5h
+[iter   1000] train 0.4466 | val 0.4489+-0.0220 | tau 0.75 | 12668s
+[hb] iter=1000 elapsed=12668s budget=10.5h
+[hb] iter=1005 elapsed=12731s budget=10.5h
+[hb] iter=1010 elapsed=12793s budget=10.5h
+[hb] iter=1015 elapsed=12855s budget=10.5h
+[hb] iter=1020 elapsed=12918s budget=10.5h
+[iter   1025] train 0.4424 | val 0.4436+-0.0294 | tau 0.74 | 12985s
+[hb] iter=1025 elapsed=12985s budget=10.5h
+[hb] iter=1030 elapsed=13047s budget=10.5h
+[hb] iter=1035 elapsed=13110s budget=10.5h
+[hb] iter=1040 elapsed=13171s budget=10.5h
+[hb] iter=1045 elapsed=13234s budget=10.5h
+[iter   1050] train 0.4340 | val 0.4592+-0.0374 | tau 0.74 | 13301s
+[hb] iter=1050 elapsed=13301s budget=10.5h
+[hb] iter=1055 elapsed=13363s budget=10.5h
+[hb] iter=1060 elapsed=13426s budget=10.5h
+[hb] iter=1065 elapsed=13489s budget=10.5h
+[hb] iter=1070 elapsed=13552s budget=10.5h
+[iter   1075] train 0.4440 | val 0.4482+-0.0272 | tau 0.73 | 13619s
+[hb] iter=1075 elapsed=13619s budget=10.5h
+[hb] iter=1080 elapsed=13682s budget=10.5h
+[hb] iter=1085 elapsed=13744s budget=10.5h
+[hb] iter=1090 elapsed=13806s budget=10.5h
+[hb] iter=1095 elapsed=13868s budget=10.5h
+[iter   1100] train 0.4435 | val 0.4479+-0.0300 | tau 0.73 | 13935s
+[hb] iter=1100 elapsed=13935s budget=10.5h
+[hb] iter=1105 elapsed=13998s budget=10.5h
+[hb] iter=1110 elapsed=14060s budget=10.5h
+[hb] iter=1115 elapsed=14123s budget=10.5h
+[hb] iter=1120 elapsed=14186s budget=10.5h
+[iter   1125] train 0.4384 | val 0.4417+-0.0228 | tau 0.72 | 14253s
+[hb] iter=1125 elapsed=14253s budget=10.5h
+[hb] iter=1130 elapsed=14316s budget=10.5h
+[hb] iter=1135 elapsed=14379s budget=10.5h
+[hb] iter=1140 elapsed=14442s budget=10.5h
+[hb] iter=1145 elapsed=14504s budget=10.5h
+[iter   1150] train 0.4479 | val 0.4666+-0.0299 | tau 0.71 | 14572s
+[hb] iter=1150 elapsed=14572s budget=10.5h
+[hb] iter=1155 elapsed=14634s budget=10.5h
+[hb] iter=1160 elapsed=14697s budget=10.5h
+[hb] iter=1165 elapsed=14760s budget=10.5h
+[hb] iter=1170 elapsed=14823s budget=10.5h
+[iter   1175] train 0.4425 | val 0.4393+-0.0292 | tau 0.71 | 14890s
+[hb] iter=1175 elapsed=14890s budget=10.5h
+[hb] iter=1180 elapsed=14953s budget=10.5h
+[hb] iter=1185 elapsed=15015s budget=10.5h
+[hb] iter=1190 elapsed=15077s budget=10.5h
+[hb] iter=1195 elapsed=15140s budget=10.5h
+[iter   1200] train 0.4551 | val 0.4780+-0.0434 | tau 0.70 | 15208s
+[hb] iter=1200 elapsed=15207s budget=10.5h
+[hb] iter=1205 elapsed=15270s budget=10.5h
+[hb] iter=1210 elapsed=15333s budget=10.5h
+[hb] iter=1215 elapsed=15396s budget=10.5h
+[hb] iter=1220 elapsed=15458s budget=10.5h
+[iter   1225] train 0.4458 | val 0.4664+-0.0240 | tau 0.69 | 15526s
+[hb] iter=1225 elapsed=15526s budget=10.5h
+[hb] iter=1230 elapsed=15588s budget=10.5h
+[hb] iter=1235 elapsed=15651s budget=10.5h
+[hb] iter=1240 elapsed=15714s budget=10.5h
+[hb] iter=1245 elapsed=15776s budget=10.5h
+[iter   1250] train 0.4486 | val 0.4534+-0.0283 | tau 0.69 | 15844s
+[hb] iter=1250 elapsed=15844s budget=10.5h
+[hb] iter=1255 elapsed=15906s budget=10.5h
+[hb] iter=1260 elapsed=15968s budget=10.5h
+[hb] iter=1265 elapsed=16031s budget=10.5h
+[hb] iter=1270 elapsed=16094s budget=10.5h
+[iter   1275] train 0.4494 | val 0.4580+-0.0358 | tau 0.68 | 16162s
+[hb] iter=1275 elapsed=16162s budget=10.5h
+[hb] iter=1280 elapsed=16224s budget=10.5h
+[hb] iter=1285 elapsed=16287s budget=10.5h
+[hb] iter=1290 elapsed=16350s budget=10.5h
+[hb] iter=1295 elapsed=16413s budget=10.5h
+[iter   1300] train 0.4471 | val 0.4346+-0.0167 | tau 0.68 | 16480s
+[hb] iter=1300 elapsed=16480s budget=10.5h
+[hb] iter=1305 elapsed=16543s budget=10.5h
+[hb] iter=1310 elapsed=16606s budget=10.5h
+[hb] iter=1315 elapsed=16669s budget=10.5h
+[hb] iter=1320 elapsed=16731s budget=10.5h
+[iter   1325] train 0.4379 | val 0.4501+-0.0317 | tau 0.67 | 16799s
+[hb] iter=1325 elapsed=16799s budget=10.5h
+[hb] iter=1330 elapsed=16862s budget=10.5h
+[hb] iter=1335 elapsed=16924s budget=10.5h
+[hb] iter=1340 elapsed=16987s budget=10.5h
+[hb] iter=1345 elapsed=17050s budget=10.5h
+[iter   1350] train 0.4594 | val 0.4520+-0.0249 | tau 0.66 | 17117s
+[hb] iter=1350 elapsed=17117s budget=10.5h
+[hb] iter=1355 elapsed=17179s budget=10.5h
+[hb] iter=1360 elapsed=17242s budget=10.5h
+[hb] iter=1365 elapsed=17304s budget=10.5h
+[hb] iter=1370 elapsed=17367s budget=10.5h
+[iter   1375] train 0.4418 | val 0.4570+-0.0423 | tau 0.66 | 17434s
+[hb] iter=1375 elapsed=17434s budget=10.5h
+[hb] iter=1380 elapsed=17497s budget=10.5h
+[hb] iter=1385 elapsed=17559s budget=10.5h
+[hb] iter=1390 elapsed=17622s budget=10.5h
+[hb] iter=1395 elapsed=17688s budget=10.5h
+[iter   1400] train 0.4417 | val 0.4284+-0.0164 | tau 0.65 | 17758s
+[hb] iter=1400 elapsed=17758s budget=10.5h
+[hb] iter=1405 elapsed=17823s budget=10.5h
+[hb] iter=1410 elapsed=17885s budget=10.5h
+[hb] iter=1415 elapsed=17948s budget=10.5h
+[hb] iter=1420 elapsed=18011s budget=10.5h
+[iter   1425] train 0.4462 | val 0.4375+-0.0205 | tau 0.64 | 18078s
+[hb] iter=1425 elapsed=18078s budget=10.5h
+[hb] iter=1430 elapsed=18141s budget=10.5h
+[hb] iter=1435 elapsed=18204s budget=10.5h
+[hb] iter=1440 elapsed=18267s budget=10.5h
+[hb] iter=1445 elapsed=18330s budget=10.5h
+[iter   1450] train 0.4272 | val 0.4294+-0.0210 | tau 0.64 | 18397s
+[hb] iter=1450 elapsed=18397s budget=10.5h
+[hb] iter=1455 elapsed=18459s budget=10.5h
+[hb] iter=1460 elapsed=18521s budget=10.5h
+[hb] iter=1465 elapsed=18584s budget=10.5h
+[hb] iter=1470 elapsed=18646s budget=10.5h
+[iter   1475] train 0.4426 | val 0.4530+-0.0249 | tau 0.63 | 18714s
+[hb] iter=1475 elapsed=18714s budget=10.5h
+[hb] iter=1480 elapsed=18777s budget=10.5h
+[hb] iter=1485 elapsed=18840s budget=10.5h
+[hb] iter=1490 elapsed=18902s budget=10.5h
+[hb] iter=1495 elapsed=18965s budget=10.5h
+[iter   1500] train 0.4277 | val 0.4397+-0.0256 | tau 0.63 | 19033s
+[hb] iter=1500 elapsed=19033s budget=10.5h
+[hb] iter=1505 elapsed=19095s budget=10.5h
+[hb] iter=1510 elapsed=19158s budget=10.5h
+[hb] iter=1515 elapsed=19221s budget=10.5h
+[hb] iter=1520 elapsed=19283s budget=10.5h
+[iter   1525] train 0.4350 | val 0.4447+-0.0271 | tau 0.62 | 19351s
+[hb] iter=1525 elapsed=19351s budget=10.5h
+[hb] iter=1530 elapsed=19414s budget=10.5h
+[hb] iter=1535 elapsed=19476s budget=10.5h
+[hb] iter=1540 elapsed=19539s budget=10.5h
+[hb] iter=1545 elapsed=19602s budget=10.5h
+[iter   1550] train 0.4437 | val 0.4832+-0.0307 | tau 0.61 | 19669s
+[hb] iter=1550 elapsed=19669s budget=10.5h
+[hb] iter=1555 elapsed=19732s budget=10.5h
+[hb] iter=1560 elapsed=19795s budget=10.5h
+[hb] iter=1565 elapsed=19858s budget=10.5h
+[hb] iter=1570 elapsed=19920s budget=10.5h
+[iter   1575] train 0.4522 | val 0.5019+-0.0395 | tau 0.61 | 19988s
+[hb] iter=1575 elapsed=19988s budget=10.5h
+[hb] iter=1580 elapsed=20051s budget=10.5h
+[hb] iter=1585 elapsed=20114s budget=10.5h
+[hb] iter=1590 elapsed=20177s budget=10.5h
+[hb] iter=1595 elapsed=20240s budget=10.5h
+[iter   1600] train 0.4459 | val 0.4698+-0.0290 | tau 0.60 | 20308s
+[hb] iter=1600 elapsed=20308s budget=10.5h
+[hb] iter=1605 elapsed=20371s budget=10.5h
+[hb] iter=1610 elapsed=20433s budget=10.5h
+[hb] iter=1615 elapsed=20496s budget=10.5h
+[hb] iter=1620 elapsed=20559s budget=10.5h
+[iter   1625] train 0.4485 | val 0.4459+-0.0332 | tau 0.59 | 20626s
+[hb] iter=1625 elapsed=20626s budget=10.5h
+[hb] iter=1630 elapsed=20689s budget=10.5h
+[hb] iter=1635 elapsed=20752s budget=10.5h
+[hb] iter=1640 elapsed=20814s budget=10.5h
+[hb] iter=1645 elapsed=20877s budget=10.5h
+[iter   1650] train 0.4449 | val 0.4525+-0.0310 | tau 0.59 | 20944s
+[hb] iter=1650 elapsed=20944s budget=10.5h
+[hb] iter=1655 elapsed=21007s budget=10.5h
+[hb] iter=1660 elapsed=21070s budget=10.5h
+[hb] iter=1665 elapsed=21133s budget=10.5h
+[hb] iter=1670 elapsed=21196s budget=10.5h
+[iter   1675] train 0.4461 | val 0.4399+-0.0247 | tau 0.58 | 21263s
+[hb] iter=1675 elapsed=21263s budget=10.5h
+[hb] iter=1680 elapsed=21326s budget=10.5h
+[hb] iter=1685 elapsed=21389s budget=10.5h
+[hb] iter=1690 elapsed=21452s budget=10.5h
+[hb] iter=1695 elapsed=21516s budget=10.5h
+[iter   1700] train 0.4389 | val 0.4470+-0.0235 | tau 0.58 | 21587s
+[hb] iter=1700 elapsed=21587s budget=10.5h
+[hb] iter=1705 elapsed=21653s budget=10.5h
+[hb] iter=1710 elapsed=21719s budget=10.5h
+[hb] iter=1715 elapsed=21782s budget=10.5h
+[hb] iter=1720 elapsed=21845s budget=10.5h
+[iter   1725] train 0.4419 | val 0.4463+-0.0300 | tau 0.57 | 21912s
+[hb] iter=1725 elapsed=21913s budget=10.5h
+[hb] iter=1730 elapsed=21975s budget=10.5h
+[hb] iter=1735 elapsed=22038s budget=10.5h
+[hb] iter=1740 elapsed=22101s budget=10.5h
+[hb] iter=1745 elapsed=22164s budget=10.5h
+[iter   1750] train 0.4558 | val 0.4536+-0.0257 | tau 0.56 | 22231s
+[hb] iter=1750 elapsed=22231s budget=10.5h
+[hb] iter=1755 elapsed=22294s budget=10.5h
+[hb] iter=1760 elapsed=22357s budget=10.5h
+[hb] iter=1765 elapsed=22420s budget=10.5h
+[hb] iter=1770 elapsed=22483s budget=10.5h
+[iter   1775] train 0.4566 | val 0.4494+-0.0247 | tau 0.56 | 22550s
+[hb] iter=1775 elapsed=22550s budget=10.5h
+[hb] iter=1780 elapsed=22613s budget=10.5h
+[hb] iter=1785 elapsed=22676s budget=10.5h
+[hb] iter=1790 elapsed=22739s budget=10.5h
+[hb] iter=1795 elapsed=22802s budget=10.5h
+[iter   1800] train 0.4590 | val 0.4308+-0.0273 | tau 0.55 | 22870s
+[hb] iter=1800 elapsed=22870s budget=10.5h
+[hb] iter=1805 elapsed=22933s budget=10.5h
+[hb] iter=1810 elapsed=22995s budget=10.5h
+[hb] iter=1815 elapsed=23058s budget=10.5h
+[hb] iter=1820 elapsed=23121s budget=10.5h
+[iter   1825] train 0.4435 | val 0.4334+-0.0258 | tau 0.54 | 23189s
+[hb] iter=1825 elapsed=23189s budget=10.5h
+[hb] iter=1830 elapsed=23252s budget=10.5h
+[hb] iter=1835 elapsed=23315s budget=10.5h
+[hb] iter=1840 elapsed=23378s budget=10.5h
+[hb] iter=1845 elapsed=23440s budget=10.5h
+[iter   1850] train 0.4378 | val 0.4346+-0.0235 | tau 0.54 | 23508s
+[hb] iter=1850 elapsed=23508s budget=10.5h
+[hb] iter=1855 elapsed=23571s budget=10.5h
+[hb] iter=1860 elapsed=23634s budget=10.5h
+[hb] iter=1865 elapsed=23696s budget=10.5h
+[hb] iter=1870 elapsed=23759s budget=10.5h
+[iter   1875] train 0.4581 | val 0.4568+-0.0283 | tau 0.53 | 23827s
+[hb] iter=1875 elapsed=23827s budget=10.5h
+[hb] iter=1880 elapsed=23890s budget=10.5h
+[hb] iter=1885 elapsed=23953s budget=10.5h
+[hb] iter=1890 elapsed=24016s budget=10.5h
+[hb] iter=1895 elapsed=24079s budget=10.5h
+[iter   1900] train 0.4572 | val 0.4427+-0.0245 | tau 0.53 | 24146s
+[hb] iter=1900 elapsed=24147s budget=10.5h
+[hb] iter=1905 elapsed=24209s budget=10.5h
+[hb] iter=1910 elapsed=24272s budget=10.5h
+[hb] iter=1915 elapsed=24335s budget=10.5h
+[hb] iter=1920 elapsed=24398s budget=10.5h
+[iter   1925] train 0.4476 | val 0.4358+-0.0200 | tau 0.52 | 24465s
+[hb] iter=1925 elapsed=24465s budget=10.5h
+[iter   1930] train 0.4458 | val 0.4465+-0.0315 | tau 0.52 | 24533s
+training done: iters_done | best val 0.4284 | wall 24533s

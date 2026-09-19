@@ -103,7 +103,26 @@ def parse_wave_solution(wave_inst: str, sol_path: str, target_ids):
         return None
 
     inst = _StaticInstance(wave_inst)
-    sol = _StaticSolution(inst, sol_path)
+    try:
+        sol = _StaticSolution(inst, sol_path)
+    except (IndexError, ValueError) as e:
+        # v5 diagnostic: dump the mismatched inst/sol pair so stale-file
+        # or format races are visible in the crash log (then re-raise)
+        print("[wave_runner] solution parse failed (%s: %s) - inst=%s "
+              "sol=%s" % (type(e).__name__, e, wave_inst, sol_path),
+              file=sys.stderr, flush=True)
+        try:
+            with open(wave_inst) as f:
+                head = [next(f) for _ in range(1)]
+            print("[wave_runner] inst header: %s" % head[0].strip(),
+                  file=sys.stderr, flush=True)
+            with open(sol_path) as f:
+                print("[wave_runner] sol content (first 40 lines):\n%s"
+                      % "".join(f.readlines()[:40]), file=sys.stderr,
+                      flush=True)
+        except Exception:
+            pass
+        raise
 
     assignment = {}
     for i, local_targets in enumerate(sol.weapons):

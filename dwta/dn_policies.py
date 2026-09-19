@@ -269,6 +269,19 @@ class RandomPolicy(object):
 # policy 3: centralised myopic CPLEX (reference upper bound)
 # ----------------------------------------------------------------------
 
+def _mtime_ns(path):
+    """mtime in ns, or None when absent. Used as a freshness gate for the
+    reused per-step solution files instead of unlinking them before each
+    subprocess solve: the solver rewrites .sol on success, so an unchanged
+    mtime after a solve means the solver failed and the stale file must
+    not be parsed. Keeps temp-file deletions ~0 per evaluation (sandbox
+    bulk-delete guards may kill processes removing hundreds of files)."""
+    try:
+        return os.stat(path).st_mtime_ns
+    except OSError:
+        return None
+
+
 class CplexPolicy(object):
     name = "cplex"
     needs_solver = True
@@ -308,8 +321,7 @@ class CplexPolicy(object):
         os.makedirs(self.tmp_dir, exist_ok=True)
         inst = os.path.join(self.tmp_dir, "dn_t%d_inst.txt" % t)
         sol = os.path.join(self.tmp_dir, "dn_t%d.sol" % t)
-        if os.path.exists(sol):
-            os.remove(sol)
+        sol_was = _mtime_ns(sol)     # freshness gate, see _mtime_ns
         target_ids = self._write_step_instance(inst, env, t)
 
         rc, output, _wall = wave_runner.run_solver(
@@ -318,10 +330,18 @@ class CplexPolicy(object):
             threads=self.solver["threads"], python_exe=self.solver["python"],
             extra_args=self.solver.get("extra_args"))
 
-        parsed = wave_runner.parse_wave_solution(inst, sol, target_ids)
-        if parsed is None:
+        # v5 fix: freshness gate BEFORE parsing. A failed solve leaves the
+        # PREVIOUS seed's .sol in place; parsing it against the freshly
+        # written (smaller-n) instance crashes with IndexError (and when
+        # it does not crash it would silently feed stale assignments to
+        # the mtime check one line too late).
+        if not os.path.exists(sol) or _mtime_ns(sol) == sol_was:
             return {}, None, False, ("no solution file (rc=%s) - hold fire "
                                      "this step" % rc)
+        parsed = wave_runner.parse_wave_solution(inst, sol, target_ids)
+        if parsed is None:
+            return {}, None, False, ("unparseable solution (rc=%s) - hold "
+                                     "fire this step" % rc)
         assignment = {}
         for j, per_i in parsed["assignment"].items():
             for i in per_i:
@@ -484,8 +504,7 @@ class POCplexPolicy(object):
         os.makedirs(self.tmp_dir, exist_ok=True)
         inst = os.path.join(self.tmp_dir, "po_t%d_inst.txt" % t)
         sol = os.path.join(self.tmp_dir, "po_t%d.sol" % t)
-        if os.path.exists(sol):
-            os.remove(sol)
+        sol_was = _mtime_ns(sol)     # freshness gate, see _mtime_ns
         self._write_belief_instance(inst, env, t, ids, w, p_hat)
         rc, output, _wall = wave_runner.run_solver(
             inst, sol,
@@ -493,6 +512,10 @@ class POCplexPolicy(object):
             threads=self.solver["threads"],
             python_exe=self.solver["python"],
             extra_args=self.solver.get("extra_args"))
+        # v5 fix: freshness gate BEFORE parsing (stale .sol from a failed
+        # solve would crash / silently mismatch the fresh instance)
+        if not os.path.exists(sol) or _mtime_ns(sol) == sol_was:
+            return {}, None, False
         parsed = wave_runner.parse_wave_solution(inst, sol, ids)
         if parsed is None:
             return {}, None, False
@@ -654,8 +677,7 @@ class RHCplexPolicy(POCplexPolicy):
         os.makedirs(self.tmp_dir, exist_ok=True)
         inst = os.path.join(self.tmp_dir, "rh_t%d_inst.txt" % t)
         sol = os.path.join(self.tmp_dir, "rh_t%d.sol" % t)
-        if os.path.exists(sol):
-            os.remove(sol)
+        sol_was = _mtime_ns(sol)     # freshness gate, see _mtime_ns
         self._write_horizon_instance(inst, ids, w, p2, m)
         rc, output, _wall = wave_runner.run_solver(
             inst, sol,
@@ -663,6 +685,10 @@ class RHCplexPolicy(POCplexPolicy):
             threads=self.solver["threads"],
             python_exe=self.solver["python"],
             extra_args=self.solver.get("extra_args"))
+        # v5 fix: freshness gate BEFORE parsing (stale .sol from a failed
+        # solve would crash / silently mismatch the fresh instance)
+        if not os.path.exists(sol) or _mtime_ns(sol) == sol_was:
+            return {}, None, False
         parsed = wave_runner.parse_wave_solution(inst, sol, ids)
         if parsed is None:
             return {}, None, False
@@ -723,12 +749,75 @@ class RHCplexPolicy(POCplexPolicy):
 
 
 # ----------------------------------------------------------------------
+# policy 6: rolling-horizon myopic GA (v4 D2 metaheuristic baseline)
+# ----------------------------------------------------------------------
+
+class GAPolicy(object):
+    """GA: every decision step solves the CURRENT-step WTA with a
+    genetic algorithm (dwta/ga_solver.py), with EXACTLY the same
+    information boundary, state-reading convention and objective as
+    CplexPolicy (per-step expected destroyed value maximisation on the
+    joint visible state; global pool + engagement-window legality).
+
+    Deployment-cost baseline: pure numpy, no CPLEX licence. With
+    with_reference a per-step CPLEX reference solve is attached so the
+    gap (metric iii) is computed on the same state.
+
+    Determinism: private numpy RandomState(policy_seed) reset at every
+    episode start (t-rewind detection, RandomPolicy pattern) - the env
+    rng stream is never touched, so per-seed result_hash is stable.
+    """
+
+    name = "ga"
+    needs_solver = False
+
+    def __init__(self, pop=40, gens=50, seed=0, with_reference=False,
+                 solver=None, tmp_dir=None):
+        from . import ga_solver
+        self._ga = ga_solver
+        self.pop = int(pop)
+        self.gens = int(gens)
+        self.seed = int(seed)
+        self._rng = None
+        self._last_t = None
+        self.with_reference = with_reference
+        self._ref = CplexPolicy(solver, tmp_dir) if with_reference else None
+
+    def reset_episode(self):
+        self._rng = np.random.RandomState(self.seed)
+        self._last_t = None
+
+    def act(self, env, t):
+        dn = env.dn
+        if self._rng is None or (self._last_t is not None
+                                 and t <= self._last_t):
+            self.reset_episode()          # new episode: rewind detected
+        self._last_t = t
+        no_action = {i: None for i in range(dn.m)}
+        info = {"solved": True, "failed_agents": 0}
+        if t > dn.K - 2 or env.pool <= 0:
+            return no_action, info
+        assignment, objective = self._ga.solve_assign(
+            env, t, env.pool, self._rng, pop=self.pop, gens=self.gens)
+        actions = {i: None for i in range(dn.m)}
+        for i, j in assignment.items():
+            actions[i] = j
+        info["objective"] = objective
+        if self._ref is not None:
+            _, ref_info = self._ref.act(env, t)
+            info["reference_cost"] = ref_info.get("objective")
+            info["reference_solved"] = ref_info.get("solved", False)
+            info["detail"] = ref_info.get("detail")
+        return actions, info
+
+
+# ----------------------------------------------------------------------
 # registry
 # ----------------------------------------------------------------------
 
 def build_policy(name, solver=None, tmp_dir=None, with_reference=False,
                  model_path=None, device="auto", p_hold=None,
-                 policy_seed=0):
+                 policy_seed=0, ga_pop=40, ga_gen=50):
     if name == "none":
         return NonePolicy()
     if name == "greedy":
@@ -754,7 +843,9 @@ def build_policy(name, solver=None, tmp_dir=None, with_reference=False,
     if name == "rh-cplex":
         return RHCplexPolicy(solver, tmp_dir,
                              with_reference=with_reference)
-    if name == "marl":
+    if name in ("marl", "ecmappo"):
+        # 'ecmappo' is the v5 §9 report alias for the EC-MAPPO main
+        # method (same MarlPolicy / same best.pt artefacts)
         from marl.policy import MarlPolicy
         return MarlPolicy(model_path=model_path, device=device,
                           greedy=True, seed=0, with_reference=with_reference,
@@ -764,6 +855,16 @@ def build_policy(name, solver=None, tmp_dir=None, with_reference=False,
         return PoolMLPPolicy(policy_kind=name, model_path=model_path,
                              device=device, with_reference=with_reference,
                              solver=solver, tmp_dir=tmp_dir)
+    if name == "maddpg":
+        from marl.baseline_policy import MADDPGPolicy
+        return MADDPGPolicy(model_path=model_path, device=device,
+                            with_reference=with_reference, solver=solver,
+                            tmp_dir=tmp_dir)
+    if name == "ga":
+        return GAPolicy(pop=ga_pop, gens=ga_gen, seed=policy_seed,
+                        with_reference=with_reference, solver=solver,
+                        tmp_dir=tmp_dir)
     raise ValueError("unknown DN policy: %r (expected none/greedy/"
                      "greedy_threat/greedy_nearest/random/cplex/pocplex/"
-                     "rh-cplex/marl/mappo/qmix/iql)" % name)
+                     "rh-cplex/marl/ecmappo/mappo/qmix/iql/maddpg/ga)"
+                     % name)

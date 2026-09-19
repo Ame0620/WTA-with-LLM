@@ -1,0 +1,12 @@
+{
+  "total_wall_sec": 1738.3,
+  "env_steps": 259200,
+  "params_count": 10242,
+  "best_val": 0.7163322510569919,
+  "final_metrics": {
+    "iters_done": 1200,
+    "eval_points": 48,
+    "stop_reason": "iters_done",
+    "device": "mps"
+  }
+}

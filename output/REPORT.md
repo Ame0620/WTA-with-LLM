@@ -1,4 +1,4 @@
-# MARL 算法改进实验报告（WTA-Dn-branch03）
+# MARL 算法改进实验报告（WTA-Dn-branch01）
 
 日期：2026-09-07 · 实例族：dn_3x50_K10（train s03-s30 / val s27,s30 / test s01,s02）
 评估协议：test split × 30 seeds × MC，指标口径与 e11-e13 基线完全一致。

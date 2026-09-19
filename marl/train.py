@@ -66,7 +66,7 @@ LR = 3e-4
 EPISODES_PER_ITER = 32
 PPO_EPOCHS = 2
 MINIBATCH = 256
-WALL_LIMIT_SEC = 24 * 3600.0
+WALL_LIMIT_SEC = 24 * 3600.0     # default; v4 full tier passes --wall-limit 6
 
 
 # ----------------------------------------------------------------------
@@ -75,18 +75,20 @@ WALL_LIMIT_SEC = 24 * 3600.0
 
 class CriticNet(nn.Module):
     """V(s, a): pooled true target features + global row + per-agent
-    action summaries -> MLP -> scalar."""
+    action summaries -> MLP -> scalar. n_agents is DERIVED from the
+    dataset (v3: 3 -> 44-dim state, v4: 5 -> 50-dim state); the default
+    keeps v3 checkpoints loadable."""
 
-    STATE_DIM = 32 + 3 + 3 * 3     # pooled targets + global + 3 agents x 3
-
-    def __init__(self):
+    def __init__(self, n_agents=3):
         super().__init__()
+        self.n_agents = n_agents
+        self.state_dim = 32 + 3 + 3 * n_agents
         self.tgt_proj = nn.Linear(5, 32)
-        self.head = nn.Sequential(nn.Linear(self.STATE_DIM, 128), nn.Tanh(),
+        self.head = nn.Sequential(nn.Linear(self.state_dim, 128), nn.Tanh(),
                                   nn.Linear(128, 1))
 
     def forward(self, tgt, glob, act, tgt_mask=None):
-        """tgt: [B, L, 5] (padded), glob: [B, 3], act: [B, 9]. Returns [B]
+        """tgt: [B, L, 5] (padded), glob: [B, 3], act: [B, 3m]. Returns [B]
         values.
 
         tgt_mask: [B, L] bool (True = real row). When given, pooling is a
@@ -156,7 +158,14 @@ class Trainer(object):
         self.device = _pick_device(args.device)
         self.actor = MarlNet().to(self.device)
         self.n_params = assert_params(self.actor)
-        self.critic = CriticNet().to(self.device)
+        # v4 migration: split + n_agents derived from --data-dir
+        from marl.data_split import discover_split, load_instances
+        data_dir = getattr(args, "data_dir", None) or DATA_DIR
+        train_files, val_files = discover_split(data_dir)
+        self.train_dns = load_instances(data_dir, train_files)
+        self.val_dns = load_instances(data_dir, val_files)
+        self.n_agents = self.train_dns[0].m
+        self.critic = CriticNet(n_agents=self.n_agents).to(self.device)
         self.opt_a = torch.optim.Adam(self.actor.parameters(), lr=LR)
         self.opt_c = torch.optim.Adam(self.critic.parameters(), lr=LR)
         # evaluation policy (greedy, shares the actor module)
@@ -167,10 +176,6 @@ class Trainer(object):
                                     greedy=False, seed=args.seed,
                                     training=True)
         self.collector.net = self.actor
-        self.train_dns = [DNInstance(os.path.join(DATA_DIR, f))
-                          for f in TRAIN_INSTS]
-        self.val_dns = [DNInstance(os.path.join(DATA_DIR, f))
-                        for f in VAL_INSTS]
         self.seed_counter = 100001
         self.env_steps = 0
         self.best_val = float("inf")
@@ -537,25 +542,66 @@ class Trainer(object):
         self.collector.net = self.actor
 
     # ------------------------------------------------------------------
+    def save_last(self, path, it, elapsed, eval_points=0, bad_points=0):
+        """v5 §6.1.3 periodic resumable checkpoint (every eval point +
+        <= 10 min cadence): weights, optimizer states, counters and
+        elapsed wall time so the watchdog restart keeps full budget
+        accounting."""
+        torch.save({
+            "state_dict": self.actor.state_dict(),
+            "critic_state_dict": self.critic.state_dict(),
+            "opt_a": self.opt_a.state_dict(),
+            "opt_c": self.opt_c.state_dict(),
+            "iter": it,
+            "best_val": (None if self.best_val == float("inf")
+                         else self.best_val),
+            "eval_points": eval_points,
+            "bad_points": bad_points,
+            "seed_counter": self.seed_counter,
+            "env_steps": self.env_steps,
+            "elapsed_sec": elapsed,
+            "feature_spec": {"x": 10, "q": 5, "g": 3},
+            "params_count": self.n_params,
+        }, path)
+
+    # ------------------------------------------------------------------
     def run(self):
         args = self.args
         t_start = time.time()
         ckpt_path = os.path.join(args.output, "best.pt")
+        last_path = os.path.join(args.output, "last.pt")
         it = 0
         eval_points = 0
         bad_points = 0
         stopped = None
+        resume_elapsed = 0.0
         if getattr(args, "resume", False):
-            if not os.path.exists(ckpt_path):
+            src = last_path if os.path.exists(last_path) else ckpt_path
+            if not os.path.exists(src):
                 raise FileNotFoundError(
-                    "--resume needs %s (nothing to resume from)" % ckpt_path)
-            ck = torch.load(ckpt_path, map_location="cpu")
+                    "--resume needs %s or %s (nothing to resume from)"
+                    % (last_path, ckpt_path))
+            ck = torch.load(src, map_location="cpu")
             self._load_weights(ck)
             it = int(ck.get("iter") or 0)
             if ck.get("best_val") is not None:
                 self.best_val = float(ck["best_val"])
-            print("[marl-train] resume from %s: iter=%d best_val=%.4f"
-                  % (ckpt_path, it, self.best_val), flush=True)
+            if "opt_a" in ck:      # full resumable ckpt (last.pt format)
+                try:
+                    self.opt_a.load_state_dict(ck["opt_a"])
+                    self.opt_c.load_state_dict(ck["opt_c"])
+                except Exception as e:
+                    print("[marl-train] optimizer state not restored (%s); "
+                          "continuing with fresh optimizers" % e, flush=True)
+                self.seed_counter = int(ck.get("seed_counter",
+                                                self.seed_counter))
+                self.env_steps = int(ck.get("env_steps", self.env_steps))
+                resume_elapsed = float(ck.get("elapsed_sec", 0.0))
+                eval_points = int(ck.get("eval_points", 0))
+                bad_points = int(ck.get("bad_points", 0))
+            print("[marl-train] resume from %s: iter=%d best_val=%.4f "
+                  "elapsed=%.0fs" % (src, it, self.best_val, resume_elapsed),
+                  flush=True)
         elif getattr(args, "resume_from", None):
             ck = torch.load(args.resume_from, map_location="cpu")
             self._load_weights(ck)
@@ -575,10 +621,18 @@ class Trainer(object):
             print("[marl-train] actor blended with %s (alpha=%g)"
                   % (args.init_from, a), flush=True)
         epi = args.episodes_per_iter
+        wall_limit_sec = float(getattr(args, "wall_limit", 24.0)) * 3600.0
+        last_hb = time.time()
+        last_ckpt = time.time()
         while it < args.iters:
-            if time.time() - t_start > WALL_LIMIT_SEC:
-                stopped = "wall_limit_24h"
+            elapsed = resume_elapsed + (time.time() - t_start)
+            if elapsed > wall_limit_sec:
+                stopped = "wall_limit"
                 break
+            if time.time() - last_hb > 60.0:
+                print("[hb] iter=%d elapsed=%.0fs budget=%.1fh"
+                      % (it, elapsed, wall_limit_sec / 3600.0), flush=True)
+                last_hb = time.time()
             # ---- collect one batch ----------------------------------
             episodes = []
             train_leaks = []
@@ -593,6 +647,11 @@ class Trainer(object):
             flat = self.process_batch(episodes)
             pl, vl, el = self.ppo_update(flat)
             it += 1
+            if time.time() - last_ckpt > 600.0:   # §6.1.3: <= 10 min
+                self.save_last(last_path, it,
+                               resume_elapsed + (time.time() - t_start),
+                               eval_points, bad_points)
+                last_ckpt = time.time()
             # ---- periodic evaluation -------------------------------
             if it % args.eval_every == 0 or it == args.iters:
                 val_mean, val_std = self.evaluate_val()
@@ -603,7 +662,8 @@ class Trainer(object):
                     "train_leak": sum(train_leaks) / len(train_leaks),
                     "val_leak_mean": val_mean,
                     "val_leak_std": val_std,
-                    "wall_sec": round(time.time() - t_start, 1),
+                    "wall_sec": round(resume_elapsed
+                                      + (time.time() - t_start), 1),
                     "tau": round(self.collector.tau, 3),
                     "policy_loss": round(pl, 6),
                 }
@@ -623,11 +683,19 @@ class Trainer(object):
                     bad_points = 0
                 else:
                     bad_points += 1
-                    if bad_points >= args.patience:
-                        stopped = "early_stop"
-                        break
+                self.save_last(last_path, it,
+                               resume_elapsed + (time.time() - t_start),
+                               eval_points, bad_points)
+                last_ckpt = time.time()
+                if bad_points >= args.patience:
+                    stopped = "early_stop"
+                    break
         # ---- summary -------------------------------------------------
-        wall = time.time() - t_start
+        wall = resume_elapsed + (time.time() - t_start)
+        try:      # keep last.pt fresh for post-stop restarts
+            self.save_last(last_path, it, wall, eval_points, bad_points)
+        except Exception:
+            pass
         summary = {
             "total_wall_sec": round(wall, 1),
             "env_steps": self.env_steps,
@@ -652,6 +720,10 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="CTDE training for marl")
     ap.add_argument("--iters", type=int, default=3000,
                     help="A2 relaxed budget: max 3000 iters")
+    ap.add_argument("--wall-limit", type=float, default=24.0,
+                    help="train wall-clock cap in HOURS (default 24 keeps "
+                         "the v3 tier; v4 full tier passes 6 per the "
+                         "budget-layering spec D6/4.3)")
     ap.add_argument("--eval-every", type=int, default=25)
     ap.add_argument("--patience", type=int, default=60,
                     help="early-stop patience in EVAL POINTS (A2)")
@@ -659,6 +731,9 @@ def main(argv=None):
                     help="A2: 4x episodes per iter vs e14 (was a 32 const)")
     ap.add_argument("--device", default="auto",
                     choices=["auto", "mps", "cpu"])
+    ap.add_argument("--data-dir", default=DATA_DIR,
+                    help="instance dir (default v3 dn_3x50; v4 runs pass "
+                         "data/dn-data-v4 - split protocol is fixed)")
     ap.add_argument("--seed", type=int, default=0,
                     help="actor sampling generator seed")
     ap.add_argument("--anneal-iters", type=int, default=2000,
@@ -681,8 +756,11 @@ def main(argv=None):
                          "potential sign so launch steps get a positive "
                          "kick")
     ap.add_argument("--resume", action="store_true",
-                    help="A2: resume from <output>/best.pt (weights + iter "
-                         "+ best_val; log APPENDED, tau re-annealed by iter)")
+                    help="v5 §6.1.3: resume from <output>/last.pt if "
+                         "present (weights + optimizers + counters + "
+                         "elapsed wall, budget-aware), else fall back to "
+                         "best.pt (weights + iter + best_val); log "
+                         "APPENDED, tau re-annealed by iter")
     ap.add_argument("--resume-from", default=None,
                     help="A2: load weights only from CKPT into a FRESH run "
                          "(fresh log, iter 0) - e.g. e16 reusing e15 as "

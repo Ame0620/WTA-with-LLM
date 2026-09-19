@@ -1,0 +1,73 @@
+DN-WTA v3 family evaluation
+  split=test instances=dn_5x100_K10_s01.txt, dn_5x100_K10_s02.txt
+  policy=mappo (with per-step CPLEX reference) seeds=30 (base 42) timelimit=30s
+
+=== dn_5x100_K10_s01.txt (m=5 n=100 K=10 mu=6 pool=30 total_value=8157) ===
+  MC runs done: 1/30
+  MC runs done: 2/30
+  MC runs done: 3/30
+  MC runs done: 4/30
+  MC runs done: 5/30
+  MC runs done: 6/30
+  MC runs done: 7/30
+  MC runs done: 8/30
+  MC runs done: 9/30
+  MC runs done: 10/30
+  MC runs done: 11/30
+  MC runs done: 12/30
+  MC runs done: 13/30
+  MC runs done: 14/30
+  MC runs done: 15/30
+  MC runs done: 16/30
+  MC runs done: 17/30
+  MC runs done: 18/30
+  MC runs done: 19/30
+  MC runs done: 20/30
+  MC runs done: 21/30
+  MC runs done: 22/30
+  MC runs done: 23/30
+  MC runs done: 24/30
+  MC runs done: 25/30
+  MC runs done: 26/30
+  MC runs done: 27/30
+  MC runs done: 28/30
+  MC runs done: 29/30
+  MC runs done: 30/30
+  leak rate 0.701324 +- 0.014378 | shots 30.0 | destroyed value 2436.3
+
+=== dn_5x100_K10_s02.txt (m=5 n=100 K=10 mu=6 pool=30 total_value=7616) ===
+  MC runs done: 1/30
+  MC runs done: 2/30
+  MC runs done: 3/30
+  MC runs done: 4/30
+  MC runs done: 5/30
+  MC runs done: 6/30
+  MC runs done: 7/30
+  MC runs done: 8/30
+  MC runs done: 9/30
+  MC runs done: 10/30
+  MC runs done: 11/30
+  MC runs done: 12/30
+  MC runs done: 13/30
+  MC runs done: 14/30
+  MC runs done: 15/30
+  MC runs done: 16/30
+  MC runs done: 17/30
+  MC runs done: 18/30
+  MC runs done: 19/30
+  MC runs done: 20/30
+  MC runs done: 21/30
+  MC runs done: 22/30
+  MC runs done: 23/30
+  MC runs done: 24/30
+  MC runs done: 25/30
+  MC runs done: 26/30
+  MC runs done: 27/30
+  MC runs done: 28/30
+  MC runs done: 29/30
+  MC runs done: 30/30
+  leak rate 0.692363 +- 0.013381 | shots 30.0 | destroyed value 2343.0
+[cleanup] removed tmp dir output/e34_v4_mappo_eval/tmp
+
+reports written: output/e34_v4_mappo_eval/family_report.json, output/e34_v4_mappo_eval/family_report.md
+family leak rate: 0.6968 +- 0.0045 [worst 0.7013]

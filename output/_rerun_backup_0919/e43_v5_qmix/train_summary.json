@@ -1,0 +1,13 @@
+{
+  "total_wall_sec": 782.8,
+  "env_steps": 37800,
+  "params_count": 10242,
+  "best_val": 0.7559583595925143,
+  "final_metrics": {
+    "iters_done": 350,
+    "eval_points": 14,
+    "stop_reason": "early_stop",
+    "device": "mps",
+    "algo": "qmix"
+  }
+}

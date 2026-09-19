@@ -1,0 +1,21 @@
+
+==== [pipeline] s0_ecmappo_rate attempt 1 at 2026-09-18 19:24:15 ====
+device=mps actor_params=28482
+[iter      1] train 0.7098 | val 0.8473+-0.0167 | tau 1.00 | 31s
+[iter      2] train 0.7145 | val 1.0000+-0.0000 | tau 1.00 | 57s
+[iter      3] train 0.7156 | val 0.9352+-0.0098 | tau 1.00 | 88s
+training done: iters_done | best val 0.8473 | wall 88s
+
+==== [pipeline] s0_ecmappo_rate attempt 1 at 2026-09-18 21:07:19 ====
+device=mps actor_params=28482
+[hb] iter=4 elapsed=73s budget=0.4h
+[hb] iter=8 elapsed=146s budget=0.4h
+[iter     10] train 0.6987 | val 0.8386+-0.0312 | tau 1.00 | 189s
+[hb] iter=11 elapsed=207s budget=0.4h
+[hb] iter=15 elapsed=280s budget=0.4h
+[hb] iter=19 elapsed=352s budget=0.4h
+[iter     20] train 0.6559 | val 1.0000+-0.0000 | tau 1.00 | 379s
+[hb] iter=22 elapsed=418s budget=0.4h
+[hb] iter=26 elapsed=486s budget=0.4h
+[iter     30] train 0.6140 | val 1.0000+-0.0000 | tau 0.99 | 561s
+training done: iters_done | best val 0.8386 | wall 561s

@@ -1,0 +1,139 @@
+DN-WTA v3 family evaluation
+  split=val instances=dn_5x100_K10_s27.txt, dn_5x100_K10_s28.txt, dn_5x100_K10_s29.txt, dn_5x100_K10_s30.txt
+  policy=mappo seeds=30 (base 42) timelimit=30s
+
+=== dn_5x100_K10_s27.txt (m=5 n=100 K=10 mu=6 pool=30 total_value=8180) ===
+  MC runs done: 1/30
+  MC runs done: 2/30
+  MC runs done: 3/30
+  MC runs done: 4/30
+  MC runs done: 5/30
+  MC runs done: 6/30
+  MC runs done: 7/30
+  MC runs done: 8/30
+  MC runs done: 9/30
+  MC runs done: 10/30
+  MC runs done: 11/30
+  MC runs done: 12/30
+  MC runs done: 13/30
+  MC runs done: 14/30
+  MC runs done: 15/30
+  MC runs done: 16/30
+  MC runs done: 17/30
+  MC runs done: 18/30
+  MC runs done: 19/30
+  MC runs done: 20/30
+  MC runs done: 21/30
+  MC runs done: 22/30
+  MC runs done: 23/30
+  MC runs done: 24/30
+  MC runs done: 25/30
+  MC runs done: 26/30
+  MC runs done: 27/30
+  MC runs done: 28/30
+  MC runs done: 29/30
+  MC runs done: 30/30
+  leak rate 0.717160 +- 0.017578 | shots 30.0 | destroyed value 2313.6
+
+=== dn_5x100_K10_s28.txt (m=5 n=100 K=10 mu=6 pool=30 total_value=8560) ===
+  MC runs done: 1/30
+  MC runs done: 2/30
+  MC runs done: 3/30
+  MC runs done: 4/30
+  MC runs done: 5/30
+  MC runs done: 6/30
+  MC runs done: 7/30
+  MC runs done: 8/30
+  MC runs done: 9/30
+  MC runs done: 10/30
+  MC runs done: 11/30
+  MC runs done: 12/30
+  MC runs done: 13/30
+  MC runs done: 14/30
+  MC runs done: 15/30
+  MC runs done: 16/30
+  MC runs done: 17/30
+  MC runs done: 18/30
+  MC runs done: 19/30
+  MC runs done: 20/30
+  MC runs done: 21/30
+  MC runs done: 22/30
+  MC runs done: 23/30
+  MC runs done: 24/30
+  MC runs done: 25/30
+  MC runs done: 26/30
+  MC runs done: 27/30
+  MC runs done: 28/30
+  MC runs done: 29/30
+  MC runs done: 30/30
+  leak rate 0.708341 +- 0.010008 | shots 27.0 | destroyed value 2496.6
+
+=== dn_5x100_K10_s29.txt (m=5 n=100 K=10 mu=6 pool=30 total_value=8553) ===
+  MC runs done: 1/30
+  MC runs done: 2/30
+  MC runs done: 3/30
+  MC runs done: 4/30
+  MC runs done: 5/30
+  MC runs done: 6/30
+  MC runs done: 7/30
+  MC runs done: 8/30
+  MC runs done: 9/30
+  MC runs done: 10/30
+  MC runs done: 11/30
+  MC runs done: 12/30
+  MC runs done: 13/30
+  MC runs done: 14/30
+  MC runs done: 15/30
+  MC runs done: 16/30
+  MC runs done: 17/30
+  MC runs done: 18/30
+  MC runs done: 19/30
+  MC runs done: 20/30
+  MC runs done: 21/30
+  MC runs done: 22/30
+  MC runs done: 23/30
+  MC runs done: 24/30
+  MC runs done: 25/30
+  MC runs done: 26/30
+  MC runs done: 27/30
+  MC runs done: 28/30
+  MC runs done: 29/30
+  MC runs done: 30/30
+  leak rate 0.703387 +- 0.018947 | shots 29.0 | destroyed value 2536.9
+
+=== dn_5x100_K10_s30.txt (m=5 n=100 K=10 mu=6 pool=30 total_value=8397) ===
+  MC runs done: 1/30
+  MC runs done: 2/30
+  MC runs done: 3/30
+  MC runs done: 4/30
+  MC runs done: 5/30
+  MC runs done: 6/30
+  MC runs done: 7/30
+  MC runs done: 8/30
+  MC runs done: 9/30
+  MC runs done: 10/30
+  MC runs done: 11/30
+  MC runs done: 12/30
+  MC runs done: 13/30
+  MC runs done: 14/30
+  MC runs done: 15/30
+  MC runs done: 16/30
+  MC runs done: 17/30
+  MC runs done: 18/30
+  MC runs done: 19/30
+  MC runs done: 20/30
+  MC runs done: 21/30
+  MC runs done: 22/30
+  MC runs done: 23/30
+  MC runs done: 24/30
+  MC runs done: 25/30
+  MC runs done: 26/30
+  MC runs done: 27/30
+  MC runs done: 28/30
+  MC runs done: 29/30
+  MC runs done: 30/30
+  leak rate 0.728994 +- 0.016414 | shots 30.0 | destroyed value 2275.6
+[cleanup] removed tmp dir output/e35_v4_mappo_gen/val/tmp
+
+reports written: output/e35_v4_mappo_gen/val/family_report.json, output/e35_v4_mappo_gen/val/family_report.md
+family leak rate: 0.7145 +- 0.0097 [worst 0.7290]

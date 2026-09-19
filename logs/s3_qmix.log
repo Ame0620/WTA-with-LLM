@@ -1,0 +1,132 @@
+
+==== [pipeline] s3_qmix attempt 1 at 2026-09-18 23:32:21 ====
+device=mps algo=qmix agent_params=10242
+[qmix iter     25] train 0.7246 | val 0.7736+-0.0178 | eps 0.099 | 56s
+[hb] iter=27 elapsed=60s budget=2.5h
+[qmix iter     50] train 0.7207 | val 0.7560+-0.0338 | eps 0.098 | 113s
+[hb] iter=54 elapsed=121s budget=2.5h
+[qmix iter     75] train 0.7104 | val 0.7746+-0.0334 | eps 0.097 | 170s
+[hb] iter=81 elapsed=182s budget=2.5h
+[qmix iter    100] train 0.7189 | val 0.8526+-0.0205 | eps 0.096 | 227s
+[hb] iter=108 elapsed=243s budget=2.5h
+[qmix iter    125] train 0.7005 | val 0.8255+-0.0326 | eps 0.095 | 284s
+[hb] iter=135 elapsed=304s budget=2.5h
+[qmix iter    150] train 0.7266 | val 0.8630+-0.0345 | eps 0.094 | 341s
+[hb] iter=162 elapsed=366s budget=2.5h
+[qmix iter    175] train 0.7180 | val 0.8554+-0.0256 | eps 0.093 | 398s
+[hb] iter=189 elapsed=427s budget=2.5h
+[qmix iter    200] train 0.7078 | val 0.7936+-0.0180 | eps 0.092 | 454s
+[hb] iter=217 elapsed=488s budget=2.5h
+[qmix iter    225] train 0.6964 | val 0.8879+-0.0389 | eps 0.091 | 509s
+[hb] iter=245 elapsed=549s budget=2.5h
+[qmix iter    250] train 0.7119 | val 0.9060+-0.0368 | eps 0.090 | 564s
+[hb] iter=273 elapsed=609s budget=2.5h
+[qmix iter    275] train 0.7069 | val 0.9157+-0.0317 | eps 0.089 | 618s
+[qmix iter    300] train 0.7122 | val 0.9177+-0.0263 | eps 0.088 | 672s
+[hb] iter=300 elapsed=672s budget=2.5h
+[qmix iter    325] train 0.7102 | val 0.9224+-0.0213 | eps 0.087 | 728s
+[hb] iter=328 elapsed=734s budget=2.5h
+[qmix iter    350] train 0.7114 | val 0.9072+-0.0187 | eps 0.086 | 783s
+qmix training done: early_stop | best val 0.7560 | wall 783s
+
+==== [pipeline] s3_qmix attempt 1 at 2026-09-19 20:40:44 ====
+device=mps algo=qmix agent_params=10242
+[qmix iter     25] train 0.7221 | val 0.9202+-0.0301 | eps 0.099 | 51s
+[hb] iter=30 elapsed=61s budget=2.5h
+[qmix iter     50] train 0.7115 | val 0.9295+-0.0278 | eps 0.098 | 102s
+[hb] iter=60 elapsed=122s budget=2.5h
+[qmix iter     75] train 0.7275 | val 0.9310+-0.0281 | eps 0.097 | 157s
+[hb] iter=88 elapsed=183s budget=2.5h
+[qmix iter    100] train 0.7200 | val 0.9189+-0.0328 | eps 0.096 | 211s
+[hb] iter=118 elapsed=245s budget=2.5h
+[qmix iter    125] train 0.7004 | val 0.9063+-0.0304 | eps 0.095 | 262s
+[hb] iter=147 elapsed=307s budget=2.5h
+[qmix iter    150] train 0.7254 | val 0.9046+-0.0271 | eps 0.094 | 318s
+[qmix iter    175] train 0.7079 | val 0.8767+-0.0301 | eps 0.093 | 370s
+[hb] iter=175 elapsed=370s budget=2.5h
+[qmix iter    200] train 0.7222 | val 0.8678+-0.0388 | eps 0.092 | 419s
+[hb] iter=207 elapsed=431s budget=2.5h
+[qmix iter    225] train 0.7284 | val 1.0000+-0.0000 | eps 0.091 | 467s
+[hb] iter=238 elapsed=492s budget=2.5h
+[qmix iter    250] train 0.7052 | val 0.9983+-0.0046 | eps 0.090 | 518s
+[hb] iter=270 elapsed=553s budget=2.5h
+[qmix iter    275] train 0.7076 | val 0.9930+-0.0087 | eps 0.089 | 566s
+[qmix iter    300] train 0.7353 | val 0.9845+-0.0120 | eps 0.088 | 616s
+[hb] iter=300 elapsed=616s budget=2.5h
+[qmix iter    325] train 0.7236 | val 0.9778+-0.0134 | eps 0.087 | 671s
+[hb] iter=328 elapsed=677s budget=2.5h
+[qmix iter    350] train 0.6961 | val 0.9769+-0.0133 | eps 0.086 | 726s
+[hb] iter=355 elapsed=740s budget=2.5h
+[qmix iter    375] train 0.7022 | val 0.9744+-0.0114 | eps 0.085 | 800s
+[hb] iter=375 elapsed=800s budget=2.5h
+[qmix iter    400] train 0.6999 | val 0.9638+-0.0153 | eps 0.084 | 856s
+[hb] iter=403 elapsed=861s budget=2.5h
+[qmix iter    425] train 0.7182 | val 0.9421+-0.0208 | eps 0.083 | 911s
+[hb] iter=430 elapsed=922s budget=2.5h
+[qmix iter    450] train 0.7236 | val 0.9400+-0.0201 | eps 0.082 | 967s
+[hb] iter=458 elapsed=982s budget=2.5h
+[qmix iter    475] train 0.7074 | val 0.9483+-0.0205 | eps 0.081 | 1018s
+[hb] iter=489 elapsed=1043s budget=2.5h
+[qmix iter    500] train 0.7277 | val 0.9371+-0.0206 | eps 0.080 | 1068s
+[hb] iter=520 elapsed=1105s budget=2.5h
+[qmix iter    525] train 0.6937 | val 0.9374+-0.0217 | eps 0.079 | 1118s
+[qmix iter    550] train 0.7282 | val 0.9317+-0.0213 | eps 0.078 | 1168s
+[hb] iter=550 elapsed=1168s budget=2.5h
+[qmix iter    575] train 0.7187 | val 0.9336+-0.0218 | eps 0.077 | 1221s
+[hb] iter=579 elapsed=1228s budget=2.5h
+[qmix iter    600] train 0.7109 | val 0.9263+-0.0217 | eps 0.076 | 1272s
+[hb] iter=609 elapsed=1288s budget=2.5h
+[qmix iter    625] train 0.7186 | val 0.9245+-0.0217 | eps 0.075 | 1323s
+[hb] iter=639 elapsed=1351s budget=2.5h
+[qmix iter    650] train 0.7251 | val 0.9176+-0.0209 | eps 0.074 | 1377s
+[hb] iter=668 elapsed=1412s budget=2.5h
+[qmix iter    675] train 0.7145 | val 0.9277+-0.0249 | eps 0.073 | 1430s
+[hb] iter=697 elapsed=1474s budget=2.5h
+[qmix iter    700] train 0.7149 | val 0.9179+-0.0283 | eps 0.072 | 1485s
+[qmix iter    725] train 0.7132 | val 0.8911+-0.0283 | eps 0.071 | 1542s
+[hb] iter=725 elapsed=1542s budget=2.5h
+[qmix iter    750] train 0.7268 | val 0.8617+-0.0321 | eps 0.070 | 1607s
+[hb] iter=750 elapsed=1607s budget=2.5h
+[hb] iter=771 elapsed=1670s budget=2.5h
+[qmix iter    775] train 0.7352 | val 0.8640+-0.0316 | eps 0.069 | 1688s
+[hb] iter=791 elapsed=1732s budget=2.5h
+[qmix iter    800] train 0.7268 | val 0.8383+-0.0358 | eps 0.068 | 1764s
+[hb] iter=810 elapsed=1793s budget=2.5h
+[qmix iter    825] train 0.7173 | val 0.8268+-0.0406 | eps 0.067 | 1843s
+[hb] iter=830 elapsed=1854s budget=2.5h
+[qmix iter    850] train 0.7268 | val 0.8037+-0.0349 | eps 0.066 | 1918s
+[hb] iter=850 elapsed=1918s budget=2.5h
+[hb] iter=872 elapsed=1980s budget=2.5h
+[qmix iter    875] train 0.6683 | val 0.7847+-0.0417 | eps 0.065 | 1994s
+[hb] iter=891 elapsed=2040s budget=2.5h
+[qmix iter    900] train 0.6872 | val 0.7472+-0.0300 | eps 0.064 | 2076s
+[hb] iter=908 elapsed=2101s budget=2.5h
+[qmix iter    925] train 0.7226 | val 0.7340+-0.0195 | eps 0.063 | 2160s
+[hb] iter=926 elapsed=2163s budget=2.5h
+[hb] iter=942 elapsed=2224s budget=2.5h
+[qmix iter    950] train 0.7269 | val 0.7226+-0.0186 | eps 0.062 | 2263s
+[hb] iter=957 elapsed=2285s budget=2.5h
+[qmix iter    975] train 0.7238 | val 0.7224+-0.0216 | eps 0.061 | 2349s
+[hb] iter=975 elapsed=2349s budget=2.5h
+[qmix iter   1000] train 0.7220 | val 0.7224+-0.0184 | eps 0.060 | 2408s
+[hb] iter=1001 elapsed=2410s budget=2.5h
+[qmix iter   1025] train 0.7088 | val 0.7224+-0.0248 | eps 0.059 | 2466s
+[hb] iter=1028 elapsed=2472s budget=2.5h
+[hb] iter=1044 elapsed=2536s budget=2.5h
+[qmix iter   1050] train 0.7221 | val 0.7126+-0.0280 | eps 0.058 | 2572s
+[hb] iter=1055 elapsed=2596s budget=2.5h
+[hb] iter=1069 elapsed=2657s budget=2.5h
+[qmix iter   1075] train 0.7227 | val 0.7046+-0.0243 | eps 0.057 | 2690s
+[hb] iter=1085 elapsed=2719s budget=2.5h
+[qmix iter   1100] train 0.7182 | val 0.7113+-0.0201 | eps 0.056 | 2768s
+[hb] iter=1105 elapsed=2781s budget=2.5h
+[hb] iter=1124 elapsed=2841s budget=2.5h
+[qmix iter   1125] train 0.7066 | val 0.7061+-0.0308 | eps 0.055 | 2852s
+[hb] iter=1142 elapsed=2901s budget=2.5h
+[qmix iter   1150] train 0.7178 | val 0.7043+-0.0300 | eps 0.054 | 2926s
+[hb] iter=1161 elapsed=2962s budget=2.5h
+[qmix iter   1175] train 0.7241 | val 0.7023+-0.0301 | eps 0.053 | 3022s
+[hb] iter=1176 elapsed=3025s budget=2.5h
+[hb] iter=1199 elapsed=3085s budget=2.5h
+[qmix iter   1200] train 0.7151 | val 0.7022+-0.0327 | eps 0.052 | 3092s
+qmix training done: iters_done | best val 0.7022 | wall 3093s

@@ -1,0 +1,59 @@
+[pipeline] SKIP s0_smoke (artefact present)
+[pipeline] SKIP s0_ga_probe (artefact present)
+[pipeline] START s0_ecmappo_rate (attempt 1): /opt/anaconda3/envs/wta/bin/python marl/train.py --data-dir data/dn-data-v5 --iters 30 --episodes-per-iter 96 --eval-every 10 --wall-limit 0.4 --output output/e44_v5_s0_ecmappo_rate
+[pipeline] DONE s0_ecmappo_rate (rc=0)
+[pipeline] S0 tier report -> /Users/fgod/Desktop/FGOD/Projects/UAS/WTA-Dn-branch01/logs/s0_tier_report.json (down_1930x96, est 12.92h, samples 77%)
+[pipeline] SKIP s1_cplex (artefact present)
+[pipeline] SKIP s1_ga_main (artefact present)
+[pipeline] SKIP s1_ga_sens_20x30 (artefact present)
+[pipeline] SKIP s1_ga_sens_60x80 (artefact present)
+[pipeline] SKIP s2_none (artefact present)
+[pipeline] SKIP s2_greedy (artefact present)
+[pipeline] SKIP s2_greedy_threat (artefact present)
+[pipeline] SKIP s2_greedy_nearest (artefact present)
+[pipeline] SKIP s2_random (artefact present)
+[pipeline] START s2_rh_cplex (attempt 1): /opt/anaconda3/envs/wta/bin/python experiments/dn_family_eval.py --data-dir data/dn-data-v5 --manifest data/dn-data-v5/MANIFEST.md --policy rh-cplex --seeds 30 --seed-base 42 --output output/e38_v5_rh_cplex --no-ref --delta 0.01 --timelimit 15
+[pipeline] DONE s2_rh_cplex (rc=0)
+[pipeline] SKIP s2_pocplex (artefact present)
+[pipeline] START s3_mappo (attempt 1): /opt/anaconda3/envs/wta/bin/python marl/train_mappo.py --data-dir data/dn-data-v5 --output output/e43_v5_mappo
+[pipeline] DONE s3_mappo (rc=0)
+[pipeline] START s3_qmix (attempt 1): /opt/anaconda3/envs/wta/bin/python marl/train_qmix.py --data-dir data/dn-data-v5 --output output/e43_v5_qmix
+[pipeline] DONE s3_qmix (rc=0)
+[pipeline] START s3_maddpg (attempt 1): /opt/anaconda3/envs/wta/bin/python marl/train_maddpg.py --data-dir data/dn-data-v5 --output output/e43_v5_maddpg
+[pipeline] DONE s3_maddpg (rc=0)
+[pipeline] START s3_ecmappo (attempt 1): /opt/anaconda3/envs/wta/bin/python marl/train.py --data-dir data/dn-data-v5 --iters 1930 --episodes-per-iter 96 --wall-limit 10.5 --output output/e43_v5_ecmappo
+[pipeline] DONE s3_ecmappo (rc=0)
+[pipeline] START s4_final_ecmappo (attempt 1): /opt/anaconda3/envs/wta/bin/python experiments/dn_family_eval.py --data-dir data/dn-data-v5 --manifest data/dn-data-v5/MANIFEST.md --policy ecmappo --seeds 30 --seed-base 42 --output output/e44_v5_final_ecmappo --model output/e43_v5_ecmappo/best.pt
+[pipeline] DONE s4_final_ecmappo (rc=0)
+[pipeline] START s4_gen_ecmappo_train (attempt 1): /opt/anaconda3/envs/wta/bin/python experiments/dn_family_eval.py --data-dir data/dn-data-v5 --manifest data/dn-data-v5/MANIFEST.md --policy ecmappo --seeds 10 --seed-base 42 --output output/e45_v5_gen_ecmappo_train --split train --model output/e43_v5_ecmappo/best.pt --no-ref
+[pipeline] DONE s4_gen_ecmappo_train (rc=0)
+[pipeline] START s4_gen_ecmappo_val (attempt 1): /opt/anaconda3/envs/wta/bin/python experiments/dn_family_eval.py --data-dir data/dn-data-v5 --manifest data/dn-data-v5/MANIFEST.md --policy ecmappo --seeds 10 --seed-base 42 --output output/e45_v5_gen_ecmappo_val --split val --model output/e43_v5_ecmappo/best.pt --no-ref
+[pipeline] DONE s4_gen_ecmappo_val (rc=0)
+[pipeline] START s4_gen_ecmappo_test (attempt 1): /opt/anaconda3/envs/wta/bin/python experiments/dn_family_eval.py --data-dir data/dn-data-v5 --manifest data/dn-data-v5/MANIFEST.md --policy ecmappo --seeds 10 --seed-base 42 --output output/e45_v5_gen_ecmappo_test --split test --model output/e43_v5_ecmappo/best.pt --no-ref
+[pipeline] DONE s4_gen_ecmappo_test (rc=0)
+[pipeline] START s4_final_mappo (attempt 1): /opt/anaconda3/envs/wta/bin/python experiments/dn_family_eval.py --data-dir data/dn-data-v5 --manifest data/dn-data-v5/MANIFEST.md --policy mappo --seeds 30 --seed-base 42 --output output/e44_v5_final_mappo --model output/e43_v5_mappo/best.pt
+[pipeline] DONE s4_final_mappo (rc=0)
+[pipeline] START s4_gen_mappo_train (attempt 1): /opt/anaconda3/envs/wta/bin/python experiments/dn_family_eval.py --data-dir data/dn-data-v5 --manifest data/dn-data-v5/MANIFEST.md --policy mappo --seeds 10 --seed-base 42 --output output/e45_v5_gen_mappo_train --split train --model output/e43_v5_mappo/best.pt --no-ref
+[pipeline] DONE s4_gen_mappo_train (rc=0)
+[pipeline] START s4_gen_mappo_val (attempt 1): /opt/anaconda3/envs/wta/bin/python experiments/dn_family_eval.py --data-dir data/dn-data-v5 --manifest data/dn-data-v5/MANIFEST.md --policy mappo --seeds 10 --seed-base 42 --output output/e45_v5_gen_mappo_val --split val --model output/e43_v5_mappo/best.pt --no-ref
+[pipeline] DONE s4_gen_mappo_val (rc=0)
+[pipeline] START s4_gen_mappo_test (attempt 1): /opt/anaconda3/envs/wta/bin/python experiments/dn_family_eval.py --data-dir data/dn-data-v5 --manifest data/dn-data-v5/MANIFEST.md --policy mappo --seeds 10 --seed-base 42 --output output/e45_v5_gen_mappo_test --split test --model output/e43_v5_mappo/best.pt --no-ref
+[pipeline] DONE s4_gen_mappo_test (rc=0)
+[pipeline] START s4_final_qmix (attempt 1): /opt/anaconda3/envs/wta/bin/python experiments/dn_family_eval.py --data-dir data/dn-data-v5 --manifest data/dn-data-v5/MANIFEST.md --policy qmix --seeds 30 --seed-base 42 --output output/e44_v5_final_qmix --model output/e43_v5_qmix/best.pt
+[pipeline] DONE s4_final_qmix (rc=0)
+[pipeline] START s4_gen_qmix_train (attempt 1): /opt/anaconda3/envs/wta/bin/python experiments/dn_family_eval.py --data-dir data/dn-data-v5 --manifest data/dn-data-v5/MANIFEST.md --policy qmix --seeds 10 --seed-base 42 --output output/e45_v5_gen_qmix_train --split train --model output/e43_v5_qmix/best.pt --no-ref
+[pipeline] DONE s4_gen_qmix_train (rc=0)
+[pipeline] START s4_gen_qmix_val (attempt 1): /opt/anaconda3/envs/wta/bin/python experiments/dn_family_eval.py --data-dir data/dn-data-v5 --manifest data/dn-data-v5/MANIFEST.md --policy qmix --seeds 10 --seed-base 42 --output output/e45_v5_gen_qmix_val --split val --model output/e43_v5_qmix/best.pt --no-ref
+[pipeline] DONE s4_gen_qmix_val (rc=0)
+[pipeline] START s4_gen_qmix_test (attempt 1): /opt/anaconda3/envs/wta/bin/python experiments/dn_family_eval.py --data-dir data/dn-data-v5 --manifest data/dn-data-v5/MANIFEST.md --policy qmix --seeds 10 --seed-base 42 --output output/e45_v5_gen_qmix_test --split test --model output/e43_v5_qmix/best.pt --no-ref
+[pipeline] DONE s4_gen_qmix_test (rc=0)
+[pipeline] START s4_final_maddpg (attempt 1): /opt/anaconda3/envs/wta/bin/python experiments/dn_family_eval.py --data-dir data/dn-data-v5 --manifest data/dn-data-v5/MANIFEST.md --policy maddpg --seeds 30 --seed-base 42 --output output/e44_v5_final_maddpg --model output/e43_v5_maddpg/best.pt
+[pipeline] DONE s4_final_maddpg (rc=0)
+[pipeline] START s4_gen_maddpg_train (attempt 1): /opt/anaconda3/envs/wta/bin/python experiments/dn_family_eval.py --data-dir data/dn-data-v5 --manifest data/dn-data-v5/MANIFEST.md --policy maddpg --seeds 10 --seed-base 42 --output output/e45_v5_gen_maddpg_train --split train --model output/e43_v5_maddpg/best.pt --no-ref
+[pipeline] DONE s4_gen_maddpg_train (rc=0)
+[pipeline] START s4_gen_maddpg_val (attempt 1): /opt/anaconda3/envs/wta/bin/python experiments/dn_family_eval.py --data-dir data/dn-data-v5 --manifest data/dn-data-v5/MANIFEST.md --policy maddpg --seeds 10 --seed-base 42 --output output/e45_v5_gen_maddpg_val --split val --model output/e43_v5_maddpg/best.pt --no-ref
+[pipeline] DONE s4_gen_maddpg_val (rc=0)
+[pipeline] START s4_gen_maddpg_test (attempt 1): /opt/anaconda3/envs/wta/bin/python experiments/dn_family_eval.py --data-dir data/dn-data-v5 --manifest data/dn-data-v5/MANIFEST.md --policy maddpg --seeds 10 --seed-base 42 --output output/e45_v5_gen_maddpg_test --split test --model output/e43_v5_maddpg/best.pt --no-ref
+[pipeline] DONE s4_gen_maddpg_test (rc=0)
+[pipeline] S5 report -> /Users/fgod/Desktop/FGOD/Projects/UAS/WTA-Dn-branch01/实验报告_v5全算法总览.md
+[pipeline] ALL FINISHED: 36 ok, 0 failed, 0 cascade-skipped. status: /Users/fgod/Desktop/FGOD/Projects/UAS/WTA-Dn-branch01/logs/pipeline_status.json

@@ -1,0 +1,22 @@
+
+==== [pipeline] s0_smoke attempt 1 at 2026-09-18 19:23:15 ====
+[S0] dimension audit at m = 10 (all derived, none hardcoded)
+  ecmappo : critic.state_dim=65 params=37251
+  mappo   : params=20484
+  qmix    : mixer.n_agents=10 params=40067
+  maddpg  : critic.in_dim=115 params=43084
+  forward shapes at m=10: OK
+[S0] build_policy('ecmappo') registry alias
+  ecmappo -> MarlPolicy: OK
+[S0] GA chromosome length == dn.m (derived)
+  m=10 assignment slots=0: OK
+[S0] env smoke: rules + GA + random-init learning policies
+  greedy        : 3 instances x 5 seeds  invariants OK
+  random        : 3 instances x 5 seeds  invariants OK
+  ga(8x5)       : 3 instances x 5 seeds  invariants OK
+  ecmappo       : 3 instances x 5 seeds  invariants OK
+  mappo         : 3 instances x 5 seeds  invariants OK
+  qmix          : 3 instances x 5 seeds  invariants OK
+  iql           : 3 instances x 5 seeds  invariants OK
+  maddpg        : 3 instances x 5 seeds  invariants OK
+tests/test_v5_algorithms.py: ALL PASS

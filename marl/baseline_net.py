@@ -30,7 +30,11 @@ import torch.nn as nn
 X_DIM = 8          # build_inputs(drop_m1=True): 10 - 2 M1 columns
 Q_DIM, G_DIM = 5, 3
 STATE_DIM = 32 + 3     # pooled true targets + global row (mixer / critic)
-N_AGENTS = 3           # dn-data-v3: 3 platforms
+# v5 (dn-data-v5, m = 10): all nets are parameterised by dn.m at
+# construction time (see train_mappo / train_qmix / train_maddpg). The
+# N_AGENTS constant below is ONLY a legacy default / selftest convenience
+# and must NOT be used as a training-time dimension source.
+N_AGENTS = 3           # legacy default (dn-data-v3); v5 uses m = 10
 
 
 class PoolMLPNet(nn.Module):

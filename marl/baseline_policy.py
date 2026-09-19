@@ -32,7 +32,7 @@ from marl.baseline_net import PoolMLPNet                     # noqa: E402
 from marl.masking import feasible_mask                       # noqa: E402
 from marl.policy import _pick_device                         # noqa: E402
 
-KINDS = ("mappo", "qmix", "iql")
+KINDS = ("mappo", "qmix", "iql", "maddpg")
 
 
 class PoolMLPPolicy(object):
@@ -146,6 +146,18 @@ class PoolMLPPolicy(object):
             logp_all = torch.log_softmax(masked / self.tau, dim=0)
             if self.greedy or (not any(mask)) or env.pool <= 0:
                 pick = int(torch.argmax(masked).item())
+            elif getattr(self, "sample_mode", None) == "gumbel":
+                # MADDPG exploration: Gumbel-Softmax reparameterised
+                # sample on the masked logits (straight-through hard
+                # argmax pick; noise from the ISOLATED generator - the
+                # env rng is never touched, tau_exp anneals 1.0 -> 0.1)
+                pick = int(torch.argmax(
+                    masked / self.tau - torch.log(-torch.log(
+                        torch.rand(masked.shape,
+                                   generator=self._gen).clamp_min(1e-12)
+                    ))).item())
+                if pick > 0 and not mask[pick - 1]:
+                    pick = 0            # defensive: illegal slot -> hold
             elif self.epsilon > 0.0 and float(
                     torch.rand(1, generator=self._gen).item()) \
                     < self.epsilon:
@@ -185,6 +197,39 @@ class PoolMLPPolicy(object):
             info["reference_solved"] = ref_info.get("solved", False)
             info["detail"] = ref_info.get("detail")
         return actions, info
+
+
+# ----------------------------------------------------------------------
+# MADDPG execution adapter (v4 D1: off-policy CTDE baseline)
+# ----------------------------------------------------------------------
+
+class MADDPGPolicy(PoolMLPPolicy):
+    """MADDPG execution adapter - interface-identical to PoolMLPPolicy
+    (act(env, t) -> (actions, info), reset_episode(), t-rewind
+    detection, isolated torch.Generator, greedy argmax evaluation so
+    the per-seed result_hash is deterministic).
+
+    The actor IS the PoolMLPNet skeleton (marl/maddpg_net.DetActor) -
+    same x/q/g features, same masking, same reward convention as the
+    MAPPO baseline (red line 3.1.1: only the training paradigm differs,
+    off-policy DPG + centralised Q critic vs on-policy PPO + V critic).
+
+    Training-time exploration: sample_mode='gumbel' switches the
+    collector to Gumbel-Softmax reparameterised sampling (temperature
+    annealed 1.0 -> 0.1 by the trainer via self.tau).
+    """
+
+    def __init__(self, policy_kind="maddpg", model_path=None,
+                 device="auto", greedy=True, seed=0, training=False,
+                 with_reference=False, solver=None, tmp_dir=None,
+                 gumbel_tau=1.0):
+        PoolMLPPolicy.__init__(
+            self, policy_kind=policy_kind, model_path=model_path,
+            device=device, greedy=greedy, seed=seed, training=training,
+            with_reference=with_reference, solver=solver,
+            tmp_dir=tmp_dir)
+        self.sample_mode = "gumbel" if training else None
+        self.tau = float(gumbel_tau)
 
 
 # ----------------------------------------------------------------------

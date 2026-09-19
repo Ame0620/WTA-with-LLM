@@ -1,0 +1,61 @@
+
+==== [pipeline] s4_gen_ecmappo_val attempt 1 at 2026-09-19 06:54:28 ====
+DN-WTA v3 family evaluation
+  split=val instances=dn_10x100_K10_s27.txt, dn_10x100_K10_s28.txt, dn_10x100_K10_s29.txt, dn_10x100_K10_s30.txt
+  policy=ecmappo seeds=10 (base 42) timelimit=30s
+
+=== dn_10x100_K10_s27.txt (m=10 n=100 K=10 mu=7 pool=70 total_value=8180) ===
+  MC runs done: 1/10
+  MC runs done: 2/10
+  MC runs done: 3/10
+  MC runs done: 4/10
+  MC runs done: 5/10
+  MC runs done: 6/10
+  MC runs done: 7/10
+  MC runs done: 8/10
+  MC runs done: 9/10
+  MC runs done: 10/10
+  leak rate 0.429597 +- 0.015319 | shots 70.0 | destroyed value 4665.9
+
+=== dn_10x100_K10_s28.txt (m=10 n=100 K=10 mu=7 pool=70 total_value=8560) ===
+  MC runs done: 1/10
+  MC runs done: 2/10
+  MC runs done: 3/10
+  MC runs done: 4/10
+  MC runs done: 5/10
+  MC runs done: 6/10
+  MC runs done: 7/10
+  MC runs done: 8/10
+  MC runs done: 9/10
+  MC runs done: 10/10
+  leak rate 0.428914 +- 0.016401 | shots 69.9 | destroyed value 4888.5
+
+=== dn_10x100_K10_s29.txt (m=10 n=100 K=10 mu=7 pool=70 total_value=8553) ===
+  MC runs done: 1/10
+  MC runs done: 2/10
+  MC runs done: 3/10
+  MC runs done: 4/10
+  MC runs done: 5/10
+  MC runs done: 6/10
+  MC runs done: 7/10
+  MC runs done: 8/10
+  MC runs done: 9/10
+  MC runs done: 10/10
+  leak rate 0.421630 +- 0.013548 | shots 70.0 | destroyed value 4946.8
+
+=== dn_10x100_K10_s30.txt (m=10 n=100 K=10 mu=7 pool=70 total_value=8397) ===
+  MC runs done: 1/10
+  MC runs done: 2/10
+  MC runs done: 3/10
+  MC runs done: 4/10
+  MC runs done: 5/10
+  MC runs done: 6/10
+  MC runs done: 7/10
+  MC runs done: 8/10
+  MC runs done: 9/10
+  MC runs done: 10/10
+  leak rate 0.433548 +- 0.017634 | shots 70.0 | destroyed value 4756.5
+[cleanup] removed tmp dir output/e45_v5_gen_ecmappo_val/tmp
+
+reports written: output/e45_v5_gen_ecmappo_val/family_report.json, output/e45_v5_gen_ecmappo_val/family_report.md
+family leak rate: 0.4284 +- 0.0043 [worst 0.4335]

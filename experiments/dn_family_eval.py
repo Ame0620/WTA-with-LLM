@@ -187,10 +187,11 @@ def main(argv=None):
                     help="instance split from the MANIFEST (test = s01-s02, "
                          "the formal comparison benchmark)")
     ap.add_argument("--policy", choices=["none", "greedy", "cplex",
-                                          "pocplex", "marl",
+                                          "pocplex", "marl", "ecmappo",
                                           "greedy_threat", "greedy_nearest",
                                           "random", "rh-cplex",
-                                          "mappo", "qmix", "iql"],
+                                          "mappo", "qmix", "iql",
+                                          "maddpg", "ga"],
                     required=True)
     ap.add_argument("--seeds", type=int, default=30,
                     help="Monte-Carlo seeds per instance (v3 protocol: 30)")
@@ -209,7 +210,7 @@ def main(argv=None):
                     help="optional terminal log file, e.g. logs/e13_run.log")
     ap.add_argument("--model", default=None,
                     help="checkpoint path (required for --policy marl/"
-                         "mappo/qmix/iql)")
+                         "mappo/qmix/iql/maddpg)")
     ap.add_argument("--device", default="auto",
                     choices=["auto", "mps", "cpu"],
                     help="marl/mappo/qmix inference device")
@@ -222,6 +223,12 @@ def main(argv=None):
     ap.add_argument("--policy-seed", type=int, default=0,
                     help="seed of the policy's private RandomState "
                          "(random policy stream; default 0)")
+    ap.add_argument("--ga-pop", type=int, default=40,
+                    help="GA population (v4 main arm 40; sensitivity "
+                         "20 / 80)")
+    ap.add_argument("--ga-gen", type=int, default=50,
+                    help="GA generations (v4 main arm 50; sensitivity "
+                         "25 / 100)")
     ap.add_argument("--tmp-dir", default=None,
                     help="scratch dir for solver instances (default "
                          "<output>/tmp; point at /tmp/... to keep bulk "
@@ -238,12 +245,13 @@ def main(argv=None):
               "threads": args.threads, "python": args.python}
     # greedy family + rolling cplex automatically run with the per-step
     # CPLEX reference (--dn-reference semantics); cplex IS the reference;
-    # none/random need nothing; marl/pocplex and the learning baselines
-    # (mappo/qmix/iql) need the reference for the gap metric (disable
-    # for generalization snapshots via --no-ref)
-    with_ref = args.policy in ("greedy", "marl", "pocplex",
+    # none/random need nothing; marl/ecmappo/pocplex and the learning
+    # baselines (mappo/qmix/iql) need the reference for the gap metric
+    # (disable for generalization snapshots via --no-ref)
+    with_ref = args.policy in ("greedy", "marl", "ecmappo", "pocplex",
                                "greedy_threat", "greedy_nearest",
-                               "rh-cplex", "mappo", "qmix", "iql") \
+                               "rh-cplex", "mappo", "qmix", "iql",
+                               "maddpg", "ga") \
         and not args.no_ref
     policy = dn_policies.build_policy(args.policy, solver=solver,
                                       tmp_dir=tmp_dir,
@@ -251,7 +259,9 @@ def main(argv=None):
                                       model_path=args.model,
                                       device=args.device,
                                       p_hold=args.p_hold,
-                                      policy_seed=args.policy_seed)
+                                      policy_seed=args.policy_seed,
+                                      ga_pop=args.ga_pop,
+                                      ga_gen=args.ga_gen)
 
     log("DN-WTA v3 family evaluation")
     log("  split=%s instances=%s" % (args.split, ", ".join(instances)))
@@ -272,8 +282,7 @@ def main(argv=None):
             for r in range(args.seeds):
                 seed = args.seed_base + r
                 runs.append(dn_env.simulate_dn(dn, seed, policy))
-                if (r + 1) % 10 == 0 or r + 1 == args.seeds:
-                    log("  MC runs done: %d/%d" % (r + 1, args.seeds))
+                log("  MC runs done: %d/%d" % (r + 1, args.seeds))
             agg = dn_report.aggregate(runs, dn)
             m = agg["metrics"]
             log("  leak rate %.6f +- %.6f | shots %.1f | destroyed value %.1f"
@@ -315,6 +324,24 @@ def main(argv=None):
                                                   "dn_env.py")),
             "dwta/dn_policies.py": md5_of(os.path.join(PROJECT_ROOT, "dwta",
                                                        "dn_policies.py")),
+            "dwta/ga_solver.py": md5_of(os.path.join(PROJECT_ROOT, "dwta",
+                                                     "ga_solver.py")),
+            "marl/baseline_net.py": md5_of(os.path.join(PROJECT_ROOT,
+                                                        "marl",
+                                                        "baseline_net.py")),
+            "marl/baseline_policy.py": md5_of(os.path.join(PROJECT_ROOT,
+                                                           "marl",
+                                                           "baseline_policy.py")),
+            "marl/maddpg_net.py": md5_of(os.path.join(PROJECT_ROOT, "marl",
+                                                     "maddpg_net.py")),
+            "marl/train.py": md5_of(os.path.join(PROJECT_ROOT, "marl",
+                                                 "train.py")),
+            "marl/train_maddpg.py": md5_of(os.path.join(PROJECT_ROOT, "marl",
+                                                       "train_maddpg.py")),
+            "marl/train_mappo.py": md5_of(os.path.join(PROJECT_ROOT, "marl",
+                                                       "train_mappo.py")),
+            "marl/train_qmix.py": md5_of(os.path.join(PROJECT_ROOT, "marl",
+                                                      "train_qmix.py")),
             "experiments/dn_family_eval.py": md5_of(os.path.abspath(__file__)),
         },
         "instances": per_instance,
