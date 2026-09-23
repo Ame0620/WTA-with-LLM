@@ -1,0 +1,55 @@
+{
+  "locked_tier": "A",
+  "config": {
+    "iters": 3000,
+    "episodes_per_iter": 128,
+    "patience": 60,
+    "eval_every": 25
+  },
+  "device": "cpu",
+  "device_rationale": "e20 main table ran CPU (~1.3 s/iter); auto->MPS measured ~8 s/iter on this model (6x slower) - 24-arm tier A infeasible on MPS; all 24 arms + smokes run CPU (R4' uniform)",
+  "window_h": [
+    20.0,
+    60.0
+  ],
+  "smoke_measurements": {
+    "(1,1,1)": {
+      "sec_per_iter": 1.486,
+      "smoke_dir": "output/e53_v3_ablation_r2/_smoke_111"
+    },
+    "(0,0,0)": {
+      "sec_per_iter": 0.834,
+      "smoke_dir": "output/e53_v3_ablation_r2/_smoke_000"
+    }
+  },
+  "worst_sec_per_iter": 1.486,
+  "expected_convergence_iters": 1750,
+  "ladder": [
+    {
+      "tier": "A",
+      "iters": 3000,
+      "episodes_per_iter": 128,
+      "patience": 60,
+      "expected_wall_h": 17.34,
+      "upper_bound_wall_h": 29.72
+    },
+    {
+      "tier": "A-1",
+      "iters": 2000,
+      "episodes_per_iter": 128,
+      "patience": 50,
+      "expected_wall_h": 17.34,
+      "upper_bound_wall_h": 19.81
+    },
+    {
+      "tier": "A-2",
+      "iters": 1500,
+      "episodes_per_iter": 128,
+      "patience": 40,
+      "expected_wall_h": 17.34,
+      "upper_bound_wall_h": 14.86
+    }
+  ],
+  "reason": "expected wall 17.3h <= 60h ceiling (window (20.0, 60.0), early-stop dependency declared, e20 convergence point 1750 iters)",
+  "locked_at": "2026-09-21T16:02:19+0800"
+}

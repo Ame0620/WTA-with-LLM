@@ -1,0 +1,34 @@
+{
+  "tier": "T",
+  "config": {
+    "iters": 1000,
+    "episodes_per_iter": 128,
+    "patience": 30,
+    "eval_every": 25
+  },
+  "device": "cpu",
+  "device_rationale": "CPU matches the e53 formal round device and the e20 main table (~1.3 s/iter); auto->MPS measured ~8 s/iter (6x slower)",
+  "window_h": [
+    0.4,
+    1.2
+  ],
+  "smoke_measurements": {
+    "(1,0,0)": {
+      "sec_per_iter": 0.9,
+      "smoke_dir": "output/e52_recal/_smoke_100"
+    },
+    "(0,1,0)": {
+      "sec_per_iter": 0.87,
+      "smoke_dir": "output/e52_recal/_smoke_010"
+    }
+  },
+  "slower_sec_per_iter": 0.9,
+  "extrapolated_arm_wall_h": {
+    "800": 0.2,
+    "640": 0.16,
+    "1000": 0.25
+  },
+  "picked_iters": 1000,
+  "reason": "extrapolated 0.20h below floor 0.4h -> one step up to 1000 (device faster than the MPS baseline the window was calibrated on; declared)",
+  "locked_at": "2026-09-21T10:35:58+0800"
+}

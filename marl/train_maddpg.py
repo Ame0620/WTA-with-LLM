@@ -8,17 +8,18 @@ chosen-target obs features x_j in R^8, hold -> zero row;
 permutation-invariant, NO target-id one-hot).
 
     actor    : DetActor = PoolMLPNet skeleton (capacity/features
-               identical to the MAPPO actor - isolates the paradigm axis)
+               identical to the PoolMLPNet actor - isolates the
+               paradigm axis)
     critic   : one Q_i(s, a_1..a_m) per platform, shared body + heads,
                input 35 + 8*m (75 at v4 m=5)
-    gamma    : imported FROM train_mappo (calibre red line)
+    gamma    : imported FROM marl.train (calibre red line)
     sampling : Gumbel-Softmax reparameterised exploration on masked
                logits, temperature 1.0 -> 0.1 (no OU noise - undefined
                on the discrete domain); evaluation = greedy argmax
     updates  : episode-end batched updates, <= --updates-per-step
                gradient steps per fresh env step; replay 1e5 transitions
     targets  : actor/critic target copies, soft update tau = 0.005
-    reward   : R_team (marl/reward.py), MAPPO folding convention
+    reward   : R_team (marl/reward.py), marl/train.py folding convention
                (R_team[t] -> a_t, terminal events folded into the LAST
                decision step)
     early stop: val leak (s27-s30 x seeds 42-51, greedy, no CPLEX),
@@ -49,8 +50,7 @@ from dwta.dn_env import DNEnv                               # noqa: E402
 from marl.maddpg_net import DetActor, CentralQCritic, \
     assert_system_params                                    # noqa: E402
 from marl.baseline_policy import MADDPGPolicy               # noqa: E402
-from marl.train import critic_inputs                        # noqa: E402
-from marl.train_mappo import GAMMA                          # noqa: E402
+from marl.train import critic_inputs, GAMMA                 # noqa: E402
 from marl.reward import build_rewards, C_INVALID            # noqa: E402
 
 DATA_DIR = os.path.join(PROJECT_ROOT, "data", "dn-data-v4")

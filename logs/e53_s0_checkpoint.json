@@ -1,0 +1,155 @@
+{
+ "locked_params": [
+  0.2,
+  0.5,
+  1.0
+ ],
+ "arms": {
+  "b0_000_s0": {
+   "first_val_below_075": 125,
+   "best_val": 0.6216362901628406,
+   "best_iter": 1425,
+   "iters_run": 2925,
+   "wall_h": 0.652,
+   "stop_reason": "early_stop",
+   "mech_tail": {
+    "r_shape_share": 0.0,
+    "credit_adv_share": 0.0
+   },
+   "rollout": {
+    "worst_shots": 18,
+    "min_ammo_end": 0
+   }
+  },
+  "b3_111_s0": {
+   "first_val_below_075": 50,
+   "best_val": 0.6181931523576528,
+   "best_iter": 275,
+   "iters_run": 1775,
+   "wall_h": 0.663,
+   "stop_reason": "early_stop",
+   "mech_tail": {
+    "r_shape_share": 0.093055,
+    "credit_adv_share": 0.103108
+   },
+   "rollout": {
+    "worst_shots": 18,
+    "min_ammo_end": 0
+   }
+  },
+  "ad_011_s0": {
+   "first_val_below_075": 25,
+   "best_val": 0.6049174761024749,
+   "best_iter": 475,
+   "iters_run": 1975,
+   "wall_h": 0.671,
+   "stop_reason": "early_stop",
+   "mech_tail": {
+    "r_shape_share": 0.092185,
+    "credit_adv_share": 0.0
+   },
+   "rollout": {
+    "worst_shots": 18,
+    "min_ammo_end": 0
+   }
+  },
+  "ae_101_s0": {
+   "first_val_below_075": 50,
+   "best_val": 0.6150538143943756,
+   "best_iter": 1675,
+   "iters_run": 3000,
+   "wall_h": 0.899,
+   "stop_reason": "iters_done",
+   "mech_tail": {
+    "r_shape_share": 0.0,
+    "credit_adv_share": 0.128585
+   },
+   "rollout": {
+    "worst_shots": 18,
+    "min_ammo_end": 0
+   }
+  },
+  "b2_110_s0": {
+   "first_val_below_075": 100,
+   "best_val": 0.615240062912897,
+   "best_iter": 1625,
+   "iters_run": 3000,
+   "wall_h": 0.595,
+   "stop_reason": "iters_done",
+   "mech_tail": {
+    "r_shape_share": 0.098456,
+    "credit_adv_share": 0.110941
+   },
+   "rollout": {
+    "worst_shots": 18,
+    "min_ammo_end": 0
+   }
+  },
+  "b1_100_s0": {
+   "first_val_below_075": 75,
+   "best_val": 0.6183615960169115,
+   "best_iter": 800,
+   "iters_run": 2300,
+   "wall_h": 0.445,
+   "stop_reason": "early_stop",
+   "mech_tail": {
+    "r_shape_share": 0.0,
+    "credit_adv_share": 0.106379
+   },
+   "rollout": {
+    "worst_shots": 18,
+    "min_ammo_end": 0
+   }
+  },
+  "only_010_s0": {
+   "first_val_below_075": 125,
+   "best_val": 0.6262845040720045,
+   "best_iter": 975,
+   "iters_run": 2475,
+   "wall_h": 0.482,
+   "stop_reason": "early_stop",
+   "mech_tail": {
+    "r_shape_share": 0.078558,
+    "credit_adv_share": 0.0
+   },
+   "rollout": {
+    "worst_shots": 18,
+    "min_ammo_end": 0
+   }
+  },
+  "only_001_s0": {
+   "first_val_below_075": 25,
+   "best_val": 0.6058487663988779,
+   "best_iter": 2300,
+   "iters_run": 3000,
+   "wall_h": 0.896,
+   "stop_reason": "iters_done",
+   "mech_tail": {
+    "r_shape_share": 0.0,
+    "credit_adv_share": 0.0
+   },
+   "rollout": {
+    "worst_shots": 18,
+    "min_ammo_end": 0
+   }
+  }
+ },
+ "sanity": {
+  "c8_vs_c1": {
+   "delta": -0.00344,
+   "limit": 0.03,
+   "pass": true
+  },
+  "c3_vs_c1": {
+   "delta": 0.00465,
+   "limit": 0.02,
+   "pass": true
+  },
+  "c5_vs_c1": {
+   "delta": -0.00327,
+   "limit": 0.02,
+   "pass": true
+  }
+ },
+ "fails": []
+}

@@ -47,11 +47,25 @@ GAMMA_SHAPE = 0.99
 def build_rewards(env, run_rec: dict, dyn,
                   c_invalid: float = C_INVALID,
                   credit_mode: str = "credit_kill",
-                  phi_sign: float = -1.0) -> dict:
+                  phi_sign: float = -1.0,
+                  use_eaps: bool = True,
+                  phi_scale: float = 1.0) -> dict:
     """phi_sign: -1 (default, historical) gives Phi = -sum w*pbar (launch
     steps receive a negative kick); +1 flips the potential sign (E15-A3
     alternative 1: launch steps get an immediate positive kick) - used
-    only as the A0-triggered pos control arm after e16 picks c*."""
+    only as the A0-triggered pos control arm after e16 picks c*.
+
+    use_eaps (v5 ablation switch): True (default, bit-identical to the
+    historical path) applies the potential shaping term; False skips the
+    Phi construction entirely and sets R_shaped = R_team (the base event
+    sequence is fully preserved; closing EAPS by flipping/zeroing
+    phi_sign is FORBIDDEN per the ablation spec R7).
+
+    phi_scale (r2 recalibration lambda): multiplies the shaping term
+    R_shaped = R_team + phi_scale * phi_sign * (gamma*Phi' - Phi)
+    strictly INSIDE the use_eaps branch; phi_scale with use_eaps=0 is a
+    no-op (E2 gate) and phi_scale=1.0 keeps the pre-r2 path
+    bit-identical (x*1.0 == x exactly in IEEE754)."""
     total = float(dyn.total_value())
     K = dyn.K
     steps = K + 1                                  # t = 0..K
@@ -79,37 +93,46 @@ def build_rewards(env, run_rec: dict, dyn,
         R_team[t] = r - c_invalid * invalid_at.get(t, 0)
 
     # ---- potential Phi(t): state AFTER step t's events ----------------
-    # replay alive set + in-flight set from the recorded outcomes
+    # replay alive set + in-flight set from the recorded outcomes.
+    # EAPS off: the Phi construction itself is REMOVED from the training
+    # signal (audit A-2) - it is not computed at all and R_shaped equals
+    # the base event sequence below.
     Phi = torch.zeros(steps + 1, dtype=torch.float64)   # Phi[steps] = terminal = 0
-    alive = set()
-    fired = sorted(env.shots, key=lambda e: (e["t_fire"], e["i"]))
-    for t in range(steps):
-        for j in dyn.targets_arriving(t):
-            alive.add(j)
-        alive.discard(None)
-        # remove destroyed / leaked at t
-        for j, td in env.destroyed_at.items():
-            if td == t:
-                alive.discard(j)
-        for j, (tl, _c) in env.leaked_at.items():
-            if tl == t:
-                alive.discard(j)
-        # in-flight including this step's launches (t_fire <= t < t_hit)
-        phi = 0.0
-        for j in list(alive):
-            p_surv = 1.0
-            for ev in fired:
-                if ev["j"] == j and ev["t_fire"] <= t < ev["t_hit"]:
-                    p_surv *= (1.0 - ev["p_shot"])
-            pbar = 1.0 - p_surv
-            if pbar > 0.0:
-                phi -= dyn.w[j] * pbar / total
-        Phi[t] = phi
+    if use_eaps:
+        alive = set()
+        fired = sorted(env.shots, key=lambda e: (e["t_fire"], e["i"]))
+        for t in range(steps):
+            for j in dyn.targets_arriving(t):
+                alive.add(j)
+            alive.discard(None)
+            # remove destroyed / leaked at t
+            for j, td in env.destroyed_at.items():
+                if td == t:
+                    alive.discard(j)
+            for j, (tl, _c) in env.leaked_at.items():
+                if tl == t:
+                    alive.discard(j)
+            # in-flight including this step's launches (t_fire <= t < t_hit)
+            phi = 0.0
+            for j in list(alive):
+                p_surv = 1.0
+                for ev in fired:
+                    if ev["j"] == j and ev["t_fire"] <= t < ev["t_hit"]:
+                        p_surv *= (1.0 - ev["p_shot"])
+                pbar = 1.0 - p_surv
+                if pbar > 0.0:
+                    phi -= dyn.w[j] * pbar / total
+            Phi[t] = phi
 
-    R_shaped = torch.zeros(steps, dtype=torch.float64)
-    for t in range(steps):
-        nxt = Phi[t + 1] if t + 1 <= steps else 0.0
-        R_shaped[t] = R_team[t] + phi_sign * (GAMMA_SHAPE * nxt - Phi[t])
+        R_shaped = torch.zeros(steps, dtype=torch.float64)
+        for t in range(steps):
+            nxt = Phi[t + 1] if t + 1 <= steps else 0.0
+            R_shaped[t] = R_team[t] \
+                + phi_scale * phi_sign * (GAMMA_SHAPE * nxt - Phi[t])
+    else:
+        # EAPS off: no potential-difference term at all (R_shaped IS the
+        # base event sequence; Phi stays identically zero)
+        R_shaped = R_team.clone()
 
     # ---- credit attribution (E15-A3) -----------------------------------
     # Proportional p_shot split over the in-flight pool at kill time;

@@ -1,0 +1,25 @@
+{
+  "total_wall_sec": 24.3,
+  "env_steps": 28800,
+  "params_count": 10242,
+  "ablation": {
+    "use_dcca": 0,
+    "use_eaps": 0,
+    "use_casp": 0
+  },
+  "reshaping": {
+    "phi_scale": 1.0,
+    "credit_alpha": 1.0,
+    "cf_beta": 1.0
+  },
+  "actor_type": "pool_mlp",
+  "critic_type": "state_value",
+  "params_critic": 4929,
+  "best_val": 1.0,
+  "final_metrics": {
+    "iters_done": 25,
+    "eval_points": 1,
+    "stop_reason": "iters_done",
+    "device": "cpu"
+  }
+}

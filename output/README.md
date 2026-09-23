@@ -30,7 +30,6 @@
 | `e22_baselines/` | 基线扩展：greedy_nearest / greedy_threat / random 两档 | 0.8922 / 0.8594 / 0.8724 / 0.8466 | `dwta/dn_policies.py` |
 | `e26_v5_{none,cplex,greedy}_probe/` | V5 数据集（10×100，池 80）基线探针（test×5 seeds） | none 1.0000；greedy 0.6843±0.0415；**cplex 0.2938±0.0260**（弹药 t=7 耗尽、晚窗占比 0.81–0.93） | `data/dn-data-v5/`（见 `DN-WTA_v5_数据集说明.md`） |
 | `e23_rhcplex/` | 滚动时域（receding horizon）CPLEX 基线 | leak 0.6808（优于 myopic 0.7085） | `dwta/dn_policies.py` |
-| `e24_mappo*` | E24 MAPPO 基线（训练+终评+泛化） | test leak 0.6014；3.46M env steps / 3000 iters | `marl/train_mappo.py` |
 | `e25_qmix*` | E25 QMIX 基线（训练+终评+泛化） | test leak 0.8262；1.81M steps 早停 | `marl/train_qmix.py` |
 | `regress_check_e22to26.md` | E22–E26 改动后回归核查 | 6/6 result_hash 逐位一致 ALL PASS | — |
 
@@ -57,7 +56,6 @@ qmix      0.8262                    （E25 基线扩展）
 greedy    0.7913 ± 0.010            （启发式）
 cplex     0.7085 ± 0.0343           （全知/同信息 myopic 最优，PO-CPLEX gap≡0 等价）
 rhcplex   0.6808                    （E23 滚动时域）
-mappo     0.6014                    （E24 基线扩展）
 e20 c010  0.5963 ± 0.0168           （竞态修复后干净重训）
 e19 c010  0.5546 ± 0.062            （改进主臂，修复前口径：超 myopic CPLEX 21.7%）
 ```

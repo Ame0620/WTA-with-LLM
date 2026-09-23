@@ -279,15 +279,50 @@ def main(argv=None):
                 % (name, dn.m, dn.n, dn.K, dn.mu, dn.m * dn.mu,
                    dn.total_value()))
             runs = []
+            mech_list = []      # per-run policy mechanism stats (§3.6)
             for r in range(args.seeds):
                 seed = args.seed_base + r
+                prev_rep = getattr(policy, "repeat_targeting_total", 0)
+                prev_us = getattr(policy, "fwd_us_total", 0.0)
+                prev_calls = getattr(policy, "fwd_calls", 0)
                 runs.append(dn_env.simulate_dn(dn, seed, policy))
+                if hasattr(policy, "fwd_calls"):
+                    # MarlPolicy mechanism counters: pure reads, they do
+                    # not touch run records -> result_hash unchanged
+                    dcalls = policy.fwd_calls - prev_calls
+                    mech_list.append({
+                        "seed": seed,
+                        "repeat_targeting_count":
+                            policy.repeat_targeting_total - prev_rep,
+                        "policy_latency_us":
+                            ((policy.fwd_us_total - prev_us) / dcalls)
+                            if dcalls > 0 else None,
+                    })
                 log("  MC runs done: %d/%d" % (r + 1, args.seeds))
             agg = dn_report.aggregate(runs, dn)
             m = agg["metrics"]
             log("  leak rate %.6f +- %.6f | shots %.1f | destroyed value %.1f"
                 % (m["leak_rate"]["mean"], m["leak_rate"]["std"],
                    m["shots_total"]["mean"], m["destroyed_value"]["mean"]))
+            pol_mech = None
+            if mech_list:
+                reps = [x["repeat_targeting_count"] for x in mech_list]
+                lats = [x["policy_latency_us"] for x in mech_list
+                        if x["policy_latency_us"] is not None]
+                lat_mean = (sum(lats) / len(lats)) if lats else None
+                lat_std = ((sum((v - lat_mean) ** 2 for v in lats)
+                            / len(lats)) ** 0.5) if lats else None
+                pol_mech = {
+                    "repeat_targeting_total": sum(reps),
+                    "repeat_targeting_per_run_mean":
+                        sum(reps) / len(reps),
+                    "policy_latency_us_mean": lat_mean,
+                    "policy_latency_us_std": lat_std,
+                    "n_runs": len(reps),
+                }
+                log("  [mech] repeat_targeting/run=%.2f policy_latency=%.1f us"
+                    % (pol_mech["repeat_targeting_per_run_mean"],
+                       lat_mean if lat_mean is not None else float("nan")))
             per_instance.append({
                 "instance": name,
                 "meta": {"m": dn.m, "n": dn.n, "K": dn.K, "mu": dn.mu,
@@ -298,12 +333,25 @@ def main(argv=None):
                                     for r_ in runs],
                 "aggregates": agg,
                 "result_hash": dn_report._fingerprint(runs),
+                "policy_mechanics": pol_mech,
             })
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
         log("[cleanup] removed tmp dir %s" % tmp_dir)
 
     family = family_aggregate(per_instance)
+    # family-level policy mechanics (marl family only, §3.6)
+    mech_insts = [p["policy_mechanics"] for p in per_instance
+                  if p.get("policy_mechanics")]
+    if mech_insts:
+        rt = [x["repeat_targeting_per_run_mean"] for x in mech_insts]
+        lt = [x["policy_latency_us_mean"] for x in mech_insts
+              if x["policy_latency_us_mean"] is not None]
+        family["policy_mechanics"] = {
+            "repeat_targeting_per_run_mean": sum(rt) / len(rt),
+            "policy_latency_us_mean": (sum(lt) / len(lt)) if lt else None,
+            "n_instances": len(mech_insts),
+        }
     rep = {
         "meta": {"dataset": "DN-WTA v3", "split": args.split,
                  "manifest": os.path.relpath(args.manifest, PROJECT_ROOT)},
@@ -338,8 +386,6 @@ def main(argv=None):
                                                  "train.py")),
             "marl/train_maddpg.py": md5_of(os.path.join(PROJECT_ROOT, "marl",
                                                        "train_maddpg.py")),
-            "marl/train_mappo.py": md5_of(os.path.join(PROJECT_ROOT, "marl",
-                                                       "train_mappo.py")),
             "marl/train_qmix.py": md5_of(os.path.join(PROJECT_ROOT, "marl",
                                                       "train_qmix.py")),
             "experiments/dn_family_eval.py": md5_of(os.path.abspath(__file__)),

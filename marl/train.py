@@ -49,6 +49,7 @@ from dwta.dn_instance import DNInstance                     # noqa: E402
 from dwta.dn_env import DNEnv                               # noqa: E402
 from marl.policy import MarlPolicy, _pick_device            # noqa: E402
 from marl.network import MarlNet, assert_params             # noqa: E402
+from marl.baseline_net import PoolMLPNet, StateCritic       # noqa: E402
 from marl.reward import build_rewards, C_INVALID        # noqa: E402
 
 DATA_DIR = os.path.join(PROJECT_ROOT, "data", "dn-data-v3")
@@ -153,10 +154,50 @@ def critic_inputs(env, t, actions, dn):
 # ----------------------------------------------------------------------
 
 class Trainer(object):
+    """v5 ablation host (spec §3.1-§3.4).
+
+    Three binary switches: --use-dcca / --use-eaps / --use-casp.
+    All-open (1,1,1) is BIT-IDENTICAL to the pre-modification trainer:
+    identical module construction order (MarlNet -> CriticNet ->
+    MarlNet(eval_pol) -> MarlNet(collector)) and identical RNG
+    consumption. The global torch RNG (module init + torch.randperm in
+    the batched PPO shuffle) is now seeded explicitly inside __init__
+    so runs are reproducible across processes; the S0 pre-modification
+    baseline was run through an external driver seeding the same value
+    before construction (equivalence audit, spec §4.2).
+    """
+
     def __init__(self, args):
         self.args = args
+        self.use_dcca = int(getattr(args, "use_dcca", 1))
+        self.use_eaps = int(getattr(args, "use_eaps", 1))
+        self.use_casp = int(getattr(args, "use_casp", 1))
+        # r2 recalibration scalars (spec §3.1): lambda on the EAPS shaping
+        # term, alpha on the kill-credit injection, beta on the cf-hold
+        # diff - all default 1.0 = pre-r2 bit-identical (R1/R2).
+        self.phi_scale = float(getattr(args, "phi_scale", 1.0))
+        self.credit_alpha = float(getattr(args, "credit_alpha", 1.0))
+        self.cf_beta = float(getattr(args, "cf_beta", 1.0))
+        # v5 ablation determinism: seed the GLOBAL torch RNG (module
+        # construction + torch.randperm in the batched PPO shuffle draw
+        # from it). First statement, BEFORE any module construction, so
+        # the RNG stream matches the S0 pre-modification driver exactly.
+        torch.manual_seed(int(getattr(args, "seed", 0)))
         self.device = _pick_device(args.device)
-        self.actor = MarlNet().to(self.device)
+        if self.use_casp:
+            self.actor = MarlNet().to(self.device)
+            self.actor_type = "set_attention"
+            self.drop_m1 = False
+            self.x_dim = 10
+        else:
+            # CASP off: pool-MLP actor over the 8-dim (M1-dropped) x -
+            # structural reference baseline_net.PoolMLPNet (E24/E25
+            # learning-baseline actor; same per-target rows, same
+            # hold slot, no attention / M2 / M3 interaction modules).
+            self.actor = PoolMLPNet().to(self.device)
+            self.actor_type = "pool_mlp"
+            self.drop_m1 = True
+            self.x_dim = 8
         self.n_params = assert_params(self.actor)
         # v4 migration: split + n_agents derived from --data-dir
         from marl.data_split import discover_split, load_instances
@@ -165,16 +206,34 @@ class Trainer(object):
         self.train_dns = load_instances(data_dir, train_files)
         self.val_dns = load_instances(data_dir, val_files)
         self.n_agents = self.train_dns[0].m
-        self.critic = CriticNet(n_agents=self.n_agents).to(self.device)
+        if self.use_dcca:
+            self.critic = CriticNet(n_agents=self.n_agents).to(self.device)
+            self.critic_type = "joint_action"
+        else:
+            # DCCA off: V(s) state-value critic - structural reference
+            # baseline_net.StateCritic; the joint-action block is NOT
+            # built, credit is NOT injected into individual advantages
+            # and no counterfactual hold diff is computed.
+            self.critic = StateCritic().to(self.device)
+            self.critic_type = "state_value"
+        self.n_params_critic = sum(
+            p.numel() for p in self.critic.parameters() if p.requires_grad)
+        assert 1e3 <= self.n_params_critic <= 1e5, (
+            "[ablation] critic params %d outside [1e3, 1e5]"
+            % self.n_params_critic)
         self.opt_a = torch.optim.Adam(self.actor.parameters(), lr=LR)
         self.opt_c = torch.optim.Adam(self.critic.parameters(), lr=LR)
         # evaluation policy (greedy, shares the actor module)
         self.eval_pol = MarlPolicy(model_path=None, device=args.device,
-                                   greedy=True, seed=0)
+                                   greedy=True, seed=0,
+                                   actor_type=self.actor_type,
+                                   drop_m1=self.drop_m1)
         self.eval_pol.net = self.actor
         self.collector = MarlPolicy(model_path=None, device=args.device,
                                     greedy=False, seed=args.seed,
-                                    training=True)
+                                    training=True,
+                                    actor_type=self.actor_type,
+                                    drop_m1=self.drop_m1)
         self.collector.net = self.actor
         self.seed_counter = 100001
         self.env_steps = 0
@@ -182,6 +241,77 @@ class Trainer(object):
         self.log_path = os.path.join(args.output, "train_log.jsonl")
         self._log_f = open(self.log_path,
                            "a" if getattr(args, "resume", False) else "w")
+        # ---- mechanism instrumentation accumulators (spec §3.6) ------
+        # window = since the last eval point; pure reads of already
+        # materialised floats - they never touch any RNG stream or
+        # tensor value, so the (1,1,1) path stays bit-identical.
+        self._mech = {
+            "credit_slots": 0,          # firing slots total
+            "credit_nonzero": 0,        # slots with nonzero credit
+            "r_vals": [],               # all R_shaped step values
+            "r_shaped_nz": 0, "r_team_nz": 0, "r_steps": 0,
+            "adv_indiv": [], "adv_team": [],
+            "wall_iters": [], "illegal_actions": 0,
+            # r2 §3.4 mechanism instrumentation (pure reads):
+            "shape_abs": 0.0,           # sum |lambda*phi_diff| = |R_shaped-R_team|
+            "team_abs": 0.0,            # sum |R_team|
+            "credit_abs": 0.0,          # sum |alpha*credit + beta*cf| (dcca)
+            "gae_abs": 0.0,             # sum |GAE| over agent entries
+            "credit_cnt": 0,            # agent entries with dcca on
+        }
+
+    # ------------------------------------------------------------------
+    def _mech_row(self):
+        """Summarise + RESET the mechanism window (called at each eval
+        point, spec §3.6)."""
+        m = self._mech
+        r_vals = m["r_vals"]
+        r_mean = (sum(r_vals) / len(r_vals)) if r_vals else 0.0
+        r_std = ((sum((v - r_mean) ** 2 for v in r_vals) / len(r_vals))
+                 ** 0.5) if r_vals else 0.0
+        adv_i, adv_t = m["adv_indiv"], m["adv_team"]
+        mean_i = (sum(adv_i) / len(adv_i)) if adv_i else 0.0
+        std_i = ((sum((v - mean_i) ** 2 for v in adv_i) / len(adv_i))
+                 ** 0.5) if adv_i else 0.0
+        mean_t = (sum(adv_t) / len(adv_t)) if adv_t else 0.0
+        std_t = ((sum((v - mean_t) ** 2 for v in adv_t) / len(adv_t))
+                 ** 0.5) if adv_t else 0.0
+        row = {
+            "credit_nonzero_ratio":
+                round(m["credit_nonzero"] / max(1, m["credit_slots"]), 6),
+            "adv_indiv_over_team_std":
+                round(std_i / std_t, 6) if std_t > 0 else 0.0,
+            "reward_nonzero_ratio":
+                round(m["r_shaped_nz"] / max(1, m["r_steps"]), 6),
+            "reward_nonzero_ratio_base":
+                round(m["r_team_nz"] / max(1, m["r_steps"]), 6),
+            "r_shaped_mean": round(r_mean, 8),
+            "r_shaped_std": round(r_std, 8),
+            "params_actor": self.n_params,
+            "params_critic": self.n_params_critic,
+            "wall_per_iter": round(
+                sum(m["wall_iters"]) / max(1, len(m["wall_iters"])), 4),
+            "illegal_actions": m["illegal_actions"],
+            # r2 §3.4 mechanism evidence: share of the shaped term inside
+            # the reward stream and of the injected terms inside the
+            # individual advantage (0.0 when the mechanism is off).
+            "r_shape_share": round(
+                m["shape_abs"] / (m["shape_abs"] + m["team_abs"])
+                if (m["shape_abs"] + m["team_abs"]) > 0.0 else 0.0, 6),
+            "credit_adv_share": round(
+                m["credit_abs"] / (m["credit_abs"] + m["gae_abs"])
+                if (m["credit_abs"] + m["gae_abs"]) > 0.0 else 0.0, 6),
+        }
+        # reset the window
+        self._mech = {
+            "credit_slots": 0, "credit_nonzero": 0,
+            "r_vals": [], "r_shaped_nz": 0, "r_team_nz": 0, "r_steps": 0,
+            "adv_indiv": [], "adv_team": [],
+            "wall_iters": [], "illegal_actions": 0,
+            "shape_abs": 0.0, "team_abs": 0.0,
+            "credit_abs": 0.0, "gae_abs": 0.0, "credit_cnt": 0,
+        }
+        return row
 
     # ------------------------------------------------------------------
     def _anneal_tau(self, it):
@@ -219,7 +349,26 @@ class Trainer(object):
         rew = build_rewards(env, run_rec, dn, c_invalid=ci,
                             credit_mode=getattr(self.args, "credit_mode",
                                                 "credit_kill"),
-                            phi_sign=getattr(self.args, "phi_sign", -1.0))
+                            phi_sign=getattr(self.args, "phi_sign", -1.0),
+                            use_eaps=bool(self.use_eaps),
+                            phi_scale=self.phi_scale)
+        # ---- mechanism instrumentation window (spec §3.6) --------------
+        m = self._mech
+        m["illegal_actions"] += sum(
+            s.get("illegal_actions", 0) for s in run_rec["steps"])
+        m["credit_slots"] += len(rew["shots_detail"])
+        m["credit_nonzero"] += sum(
+            1 for v in rew["credit"].values() if v != 0.0)
+        rs = rew["R_shaped"].tolist()
+        rt = rew["R_team"].tolist()
+        m["r_vals"].extend(rs)
+        m["r_steps"] += len(rs)
+        m["r_shaped_nz"] += sum(1 for v in rs if v != 0.0)
+        m["r_team_nz"] += sum(1 for v in rt if v != 0.0)
+        # r2 §3.4: |lambda*phi_diff| = |R_shaped - R_team| (exactly 0
+        # when use_eaps=0, so a closed EAPS reports share 0.0)
+        m["shape_abs"] += sum(abs(a - b) for a, b in zip(rs, rt))
+        m["team_abs"] += sum(abs(b) for b in rt)
         return samples, rew, run_rec
 
     # ------------------------------------------------------------------
@@ -277,23 +426,29 @@ class Trainer(object):
 
         # counterfactual hold variants: for each step, n_agents rows with
         # agent i's action triple replaced by (1, 0, 0) = hold
-        tb3 = tb.repeat_interleave(n_agents, dim=0)
-        tm3 = tm.repeat_interleave(n_agents, dim=0)
-        gb3 = gb.repeat_interleave(n_agents, dim=0)
-        ab3 = ab.repeat_interleave(n_agents, dim=0)
-        for r in range(B):
-            for i in range(n_agents):
-                ab3[r * n_agents + i, i * 3:i * 3 + 3] = \
-                    torch.tensor([1.0, 0.0, 0.0])
+        # (DCCA off: the joint-action critic consumes no act rows, so the
+        # hold-variant batch is NOT built and no cf diff is computed)
+        if self.use_dcca:
+            tb3 = tb.repeat_interleave(n_agents, dim=0)
+            tm3 = tm.repeat_interleave(n_agents, dim=0)
+            gb3 = gb.repeat_interleave(n_agents, dim=0)
+            ab3 = ab.repeat_interleave(n_agents, dim=0)
+            for r in range(B):
+                for i in range(n_agents):
+                    ab3[r * n_agents + i, i * 3:i * 3 + 3] = \
+                        torch.tensor([1.0, 0.0, 0.0])
 
         # ---- one + one critic forwards (with CPU fallback) -------------
         with torch.no_grad():
             try:
                 dev = self.device
-                v_all = self.critic(tb.to(dev), gb.to(dev), ab.to(dev),
-                                    tm.to(dev))
-                v_cf = self.critic(tb3.to(dev), gb3.to(dev), ab3.to(dev),
-                                   tm3.to(dev))
+                if self.use_dcca:
+                    v_all = self.critic(tb.to(dev), gb.to(dev), ab.to(dev),
+                                        tm.to(dev))
+                    v_cf = self.critic(tb3.to(dev), gb3.to(dev), ab3.to(dev),
+                                       tm3.to(dev))
+                else:
+                    v_all = self.critic(tb.to(dev), gb.to(dev), tm.to(dev))
             except RuntimeError as e:
                 if self.device.type != "mps":
                     raise
@@ -301,11 +456,17 @@ class Trainer(object):
                 self.device = torch.device("cpu")
                 self.critic.to(self.device)
                 self.actor.to(self.device)
-                v_all = self.critic(tb, gb, ab, tm)
-                v_cf = self.critic(tb3, gb3, ab3, tm3)
+                if self.use_dcca:
+                    v_all = self.critic(tb, gb, ab, tm)
+                    v_cf = self.critic(tb3, gb3, ab3, tm3)
+                else:
+                    v_all = self.critic(tb, gb, tm)
         vals_all = v_all.tolist()
-        cf_all = (v_all.unsqueeze(1)
-                  - v_cf.view(B, n_agents)).tolist()   # base - hold_i
+        if self.use_dcca:
+            cf_all = (v_all.unsqueeze(1)
+                      - v_cf.view(B, n_agents)).tolist()   # base - hold_i
+        else:
+            cf_all = [None] * B                            # unused
 
         # ---- GAE + flat sample assembly (same math as before) ----------
         flat = []
@@ -321,7 +482,25 @@ class Trainer(object):
                     i = entry["agent"]
                     if entry.get("empty"):
                         continue
-                    adv_i = gae[idx] + credit.get((t, i), 0.0) + cf_row[i]
+                    if self.use_dcca:
+                        # r2 §3.1: alpha scales the kill credit, beta the
+                        # counterfactual hold diff; both default 1.0 =
+                        # pre-r2 bit-identical (x*1.0 == x exactly).
+                        adv_i = gae[idx] \
+                            + self.credit_alpha * credit.get((t, i), 0.0) \
+                            + self.cf_beta * cf_row[i]
+                        self._mech["credit_abs"] += abs(
+                            self.credit_alpha * credit.get((t, i), 0.0)
+                            + self.cf_beta * cf_row[i])
+                        self._mech["credit_cnt"] += 1
+                    else:
+                        # DCCA off: NO credit injection, NO cf diff -
+                        # individual advantage IS the team GAE
+                        adv_i = gae[idx]
+                    self._mech["gae_abs"] += abs(gae[idx])
+                    # mechanism window: individual vs team advantage
+                    self._mech["adv_indiv"].append(float(adv_i))
+                    self._mech["adv_team"].append(float(gae[idx]))
                     flat.append({
                         "x": entry["x"], "q": entry["q"], "g": entry["g"],
                         "mask": entry["mask"], "pick": entry["pick"],
@@ -388,9 +567,13 @@ class Trainer(object):
             v_loss = 0.0
             for k in idx_all.tolist():
                 f = flat[k]
-                v = self.critic(f["tgt"].unsqueeze(0).to(self.device),
-                                f["glob"].unsqueeze(0).to(self.device),
-                                f["act"].unsqueeze(0).to(self.device))
+                if self.use_dcca:
+                    v = self.critic(f["tgt"].unsqueeze(0).to(self.device),
+                                    f["glob"].unsqueeze(0).to(self.device),
+                                    f["act"].unsqueeze(0).to(self.device))
+                else:
+                    v = self.critic(f["tgt"].unsqueeze(0).to(self.device),
+                                    f["glob"].unsqueeze(0).to(self.device))
                 loss = (v[0] - rets[k]) ** 2 / n
                 loss.backward()
                 v_loss += float(loss.item()) * n
@@ -423,7 +606,7 @@ class Trainer(object):
 
         # ---- pad-stack actor inputs once ------------------------------
         Lmax = max(f["x"].shape[0] for f in flat)
-        xb = torch.zeros(n, Lmax, 10)
+        xb = torch.zeros(n, Lmax, self.x_dim)
         pb = torch.zeros(n, Lmax, dtype=torch.bool)   # padding (real rows)
         mb = torch.zeros(n, Lmax, dtype=torch.bool)   # feasibility mask
         for b, f in enumerate(flat):
@@ -495,8 +678,11 @@ class Trainer(object):
                 nb += 1
             # ---- critic regression: one batched forward per epoch ------
             self.opt_c.zero_grad()
-            v = self.critic(tb.to(dev), gcb.to(dev), ab.to(dev),
-                            tm.to(dev))
+            if self.use_dcca:
+                v = self.critic(tb.to(dev), gcb.to(dev), ab.to(dev),
+                                tm.to(dev))
+            else:
+                v = self.critic(tb.to(dev), gcb.to(dev), tm.to(dev))
             v_loss = ((v - rets.to(dev)) ** 2).mean()
             v_loss.backward()
             torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 0.5)
@@ -528,8 +714,32 @@ class Trainer(object):
             "iter": it,
             "best_val": (None if self.best_val == float("inf")
                          else self.best_val),
-            "feature_spec": {"x": 10, "q": 5, "g": 3},
+            "feature_spec": {"x": self.x_dim, "q": 5, "g": 3,
+                             "drop_m1": self.drop_m1},
             "params_count": self.n_params,
+            # ---- v5 ablation metadata (spec §3.7; evaluator restores the
+            # structure from these fields ONLY - never from the path) ---
+            "ablation": {"use_dcca": self.use_dcca,
+                         "use_eaps": self.use_eaps,
+                         "use_casp": self.use_casp},
+            # r2 §3.2: recalibration metadata (anti-cross-arm, evaluator
+            # verifies against the locked e52 pick on every load)
+            "reshaping": {"phi_scale": self.phi_scale,
+                          "credit_alpha": self.credit_alpha,
+                          "cf_beta": self.cf_beta},
+            "actor_type": self.actor_type,
+            "critic_type": self.critic_type,
+            "train_seed": int(getattr(self.args, "seed", 0)),
+            "budget": {
+                "iters": int(getattr(self.args, "iters", 0)),
+                "episodes_per_iter":
+                    int(getattr(self.args, "episodes_per_iter", 0)),
+                "patience": int(getattr(self.args, "patience", 0)),
+                "eval_every": int(getattr(self.args, "eval_every", 25)),
+            },
+            "versions": {"reward": "v5", "eval_protocol": "v5",
+                         "torch": str(torch.__version__),
+                         "recal": "r2"},
         }, path)
 
     def _load_weights(self, ckpt):
@@ -560,8 +770,29 @@ class Trainer(object):
             "seed_counter": self.seed_counter,
             "env_steps": self.env_steps,
             "elapsed_sec": elapsed,
-            "feature_spec": {"x": 10, "q": 5, "g": 3},
+            "feature_spec": {"x": self.x_dim, "q": 5, "g": 3,
+                             "drop_m1": self.drop_m1},
             "params_count": self.n_params,
+            # ---- v5 ablation metadata (spec §3.7) ----------------------
+            "ablation": {"use_dcca": self.use_dcca,
+                         "use_eaps": self.use_eaps,
+                         "use_casp": self.use_casp},
+            "reshaping": {"phi_scale": self.phi_scale,
+                          "credit_alpha": self.credit_alpha,
+                          "cf_beta": self.cf_beta},
+            "actor_type": self.actor_type,
+            "critic_type": self.critic_type,
+            "train_seed": int(getattr(self.args, "seed", 0)),
+            "budget": {
+                "iters": int(getattr(self.args, "iters", 0)),
+                "episodes_per_iter":
+                    int(getattr(self.args, "episodes_per_iter", 0)),
+                "patience": int(getattr(self.args, "patience", 0)),
+                "eval_every": int(getattr(self.args, "eval_every", 25)),
+            },
+            "versions": {"reward": "v5", "eval_protocol": "v5",
+                         "torch": str(torch.__version__),
+                         "recal": "r2"},
         }, path)
 
     # ------------------------------------------------------------------
@@ -634,6 +865,7 @@ class Trainer(object):
                       % (it, elapsed, wall_limit_sec / 3600.0), flush=True)
                 last_hb = time.time()
             # ---- collect one batch ----------------------------------
+            t_it = time.time()
             episodes = []
             train_leaks = []
             for _ in range(epi):
@@ -646,6 +878,7 @@ class Trainer(object):
             self._anneal_tau(it)
             flat = self.process_batch(episodes)
             pl, vl, el = self.ppo_update(flat)
+            self._mech["wall_iters"].append(time.time() - t_it)
             it += 1
             if time.time() - last_ckpt > 600.0:   # §6.1.3: <= 10 min
                 self.save_last(last_path, it,
@@ -667,6 +900,8 @@ class Trainer(object):
                     "tau": round(self.collector.tau, 3),
                     "policy_loss": round(pl, 6),
                 }
+                # mechanism window summary (spec §3.6; resets the window)
+                row.update(self._mech_row())
                 self._log_f.write(json.dumps(row) + "\n")
                 self._log_f.flush()
                 print("[iter %6d] train %.4f | val %.4f+-%.4f | "
@@ -700,6 +935,15 @@ class Trainer(object):
             "total_wall_sec": round(wall, 1),
             "env_steps": self.env_steps,
             "params_count": self.n_params,
+            "ablation": {"use_dcca": self.use_dcca,
+                         "use_eaps": self.use_eaps,
+                         "use_casp": self.use_casp},
+            "reshaping": {"phi_scale": self.phi_scale,
+                          "credit_alpha": self.credit_alpha,
+                          "cf_beta": self.cf_beta},
+            "actor_type": self.actor_type,
+            "critic_type": self.critic_type,
+            "params_critic": self.n_params_critic,
             "best_val": (None if self.best_val == float("inf")
                          else self.best_val),
             "final_metrics": {"iters_done": it, "eval_points": eval_points,
@@ -774,11 +1018,47 @@ def main(argv=None):
                          "BLEND, 1 = full BC)")
     ap.add_argument("--output", default=os.path.join(
         here, "..", "output", "e14_marl_train"))
+    ap.add_argument("--use-dcca", type=int, choices=[0, 1], default=1,
+                    help="v5 ablation DCCA switch: 1 (default) = joint-"
+                         "action critic + event-retrospect credit + cf "
+                         "diff injected into individual advantages; 0 = "
+                         "StateCritic V(s), no credit, no cf diff")
+    ap.add_argument("--use-eaps", type=int, choices=[0, 1], default=1,
+                    help="v5 ablation EAPS switch: 1 (default) = potential "
+                         "shaping R_shaped = R_team + gamma*Phi' - Phi; "
+                         "0 = R_shaped = R_team (Phi removed entirely)")
+    ap.add_argument("--use-casp", type=int, choices=[0, 1], default=1,
+                    help="v5 ablation CASP switch: 1 (default) = MarlNet "
+                         "set-attention actor over 10-dim x; 0 = PoolMLPNet "
+                         "actor over 8-dim x (M1 columns dropped)")
+    ap.add_argument("--phi-scale", type=float, default=1.0,
+                    help="r2 recalibration lambda on the EAPS shaping term "
+                         "(R_shaped = R_team + lambda*phi_sign*(gamma*Phi'-"
+                         "Phi)); only meaningful with --use-eaps 1; 1.0 "
+                         "(default) = pre-r2 bit-identical")
+    ap.add_argument("--credit-alpha", type=float, default=1.0,
+                    help="r2 recalibration alpha on the kill-credit "
+                         "injection into individual advantages; only "
+                         "meaningful with --use-dcca 1; 1.0 (default) = "
+                         "pre-r2 bit-identical")
+    ap.add_argument("--cf-beta", type=float, default=1.0,
+                    help="r2 recalibration beta on the counterfactual "
+                         "hold-diff term; only meaningful with --use-dcca "
+                         "1; 1.0 (default) = pre-r2 bit-identical")
     args = ap.parse_args(argv)
     args.output = os.path.abspath(args.output)
     os.makedirs(args.output, exist_ok=True)
+    # ablation bit vector - FIRST line of the training start log (spec
+    # §3.2); must appear before any other training output
+    print("[ablation] use_dcca=%d use_eaps=%d use_casp=%d -> (%d,%d,%d)"
+          % (args.use_dcca, args.use_eaps, args.use_casp,
+             args.use_dcca, args.use_eaps, args.use_casp), flush=True)
+    # r2 §3.2: recalibration scalars - SECOND line of the start log
+    print("[reshaping] phi_scale=%g credit_alpha=%g cf_beta=%g"
+          % (args.phi_scale, args.credit_alpha, args.cf_beta), flush=True)
     tr = Trainer(args)
-    print("device=%s actor_params=%d" % (tr.device, tr.n_params))
+    print("device=%s actor_params=%d critic_params=%d critic_type=%s"
+          % (tr.device, tr.n_params, tr.n_params_critic, tr.critic_type))
     tr.run()
     return 0
 

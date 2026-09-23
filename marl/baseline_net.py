@@ -1,21 +1,23 @@
-"""Networks for the E24/E25 learning baselines (MAPPO / QMIX / IQL).
+"""Structural reference networks for the learning baselines and the v5
+ablation arms (QMIX / IQL agent nets; the CASP-off / DCCA-off ablation
+actor & critic driven by the marl/train.py switches).
 
 All agent-side networks consume the SAME §7 observation features as the
 self-developed marl policy, minus the two M1-memory columns (see
 perceive.build_inputs(drop_m1=True)): x in R^8, q in R^5, g in R^3.
 
-PoolMLPNet (MLP + target mean/max pooling - the demand-spec actor for
-MAPPO, the agent network for QMIX/IQL):
+PoolMLPNet (MLP + target mean/max pooling - the CASP-off ablation
+actor in marl/train.py --use-casp 0, the agent network for QMIX/IQL):
     pooled  = [mean(x), max(x)] in R^16                (0-safe at L=0)
     z_i     = MLP_enc([pooled, q, g])        24 -> 64 -> 64
     s_j     = MLP_score([z_i, x_j])          72 -> 32 -> 1   per target
     s_hold  = MLP_hold([z_i])                64 -> 32 -> 1
     logits/Q = [s_hold, s_1..s_L]   (hold FIRST, same layout as MarlNet)
 
-StateCritic (MAPPO critic, per the spec WITHOUT joint-action
-conditioning): masked-mean pooled true target features (5->32) + global
-row (3) -> 35 -> 128 -> 1.  Inputs come from train.critic_inputs minus
-the act block.
+StateCritic (the DCCA-off ablation critic in marl/train.py --use-dcca 0):
+    state value V(s) WITHOUT joint-action conditioning: masked-mean pooled
+    true target features (5->32) + global row (3) -> 35 -> 128 -> 1.
+    Inputs come from train.critic_inputs minus the act block.
 
 QMixer (standard QMIX monotonic hypernetwork mixing, weights forced
 non-negative through abs()): state in R^35 (same state vector as
@@ -31,16 +33,18 @@ X_DIM = 8          # build_inputs(drop_m1=True): 10 - 2 M1 columns
 Q_DIM, G_DIM = 5, 3
 STATE_DIM = 32 + 3     # pooled true targets + global row (mixer / critic)
 # v5 (dn-data-v5, m = 10): all nets are parameterised by dn.m at
-# construction time (see train_mappo / train_qmix / train_maddpg). The
-# N_AGENTS constant below is ONLY a legacy default / selftest convenience
-# and must NOT be used as a training-time dimension source.
+# construction time (see train.py ablation switches / train_qmix /
+# train_maddpg). The N_AGENTS constant below is ONLY a legacy default /
+# selftest convenience and must NOT be used as a training-time dimension
+# source.
 N_AGENTS = 3           # legacy default (dn-data-v3); v5 uses m = 10
 
 
 class PoolMLPNet(nn.Module):
-    """MLP agent network with target mean/max pooling (MAPPO actor /
-    QMIX + IQL agent net). Interface mirrors MarlNet: forward returns
-    logits [1+L] hold-first; forward_batch is the A1 batched twin."""
+    """MLP agent network with target mean/max pooling (CASP-off
+    ablation actor / QMIX + IQL agent net). Interface mirrors MarlNet:
+    forward returns logits [1+L] hold-first; forward_batch is the A1
+    batched twin."""
 
     def __init__(self, x_dim: int = X_DIM, d: int = 64):
         super().__init__()
@@ -116,8 +120,8 @@ def assert_params(model, lo: float = 1e3, hi: float = 1e5):
 
 
 class StateCritic(nn.Module):
-    """MAPPO state-value critic V(s): NO joint-action conditioning (per
-    the E24 spec - plain team GAE, no COMA counterfactuals)."""
+    """State-value critic V(s): NO joint-action conditioning (the
+    DCCA-off ablation arm - plain team GAE, no COMA counterfactuals)."""
 
     def __init__(self):
         super().__init__()

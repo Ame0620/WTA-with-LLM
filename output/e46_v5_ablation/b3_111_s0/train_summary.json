@@ -1,0 +1,20 @@
+{
+  "total_wall_sec": 6233.4,
+  "env_steps": 432000,
+  "params_count": 28482,
+  "ablation": {
+    "use_dcca": 1,
+    "use_eaps": 1,
+    "use_casp": 1
+  },
+  "actor_type": "set_attention",
+  "critic_type": "joint_action",
+  "params_critic": 8769,
+  "best_val": 0.4466038031473092,
+  "final_metrics": {
+    "iters_done": 1000,
+    "eval_points": 40,
+    "stop_reason": "iters_done",
+    "device": "mps"
+  }
+}

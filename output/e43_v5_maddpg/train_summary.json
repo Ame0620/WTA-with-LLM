@@ -1,0 +1,20 @@
+{
+  "algo": "maddpg",
+  "data_dir": "data/dn-data-v5",
+  "seed": 7,
+  "iters_done": 1200,
+  "stopped": "iters",
+  "best_val_leak": 0.5492034018868113,
+  "system_params": 43084,
+  "env_steps": 129600,
+  "updates": 32346,
+  "wall_s": 5638.2,
+  "gamma": 0.99,
+  "soft_tau": 0.005,
+  "lr_actor": 0.0001,
+  "lr_critic": 0.0003,
+  "batch": 256,
+  "buffer": 100000,
+  "updates_per_step": 0.25,
+  "device": "mps"
+}

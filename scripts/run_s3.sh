@@ -1,6 +1,6 @@
 #!/bin/zsh
 # v4 full-algorithm experiment: S3 (learning-family retraining)
-# Budget layering (D6/4.3): MAPPO/QMIX/MADDPG 3h tier (defaults
+# Budget layering (D6/4.3): QMIX/MADDPG 3h tier (defaults
 # 1200 iters x 24 ep + 2.5h wall); EC-MAPPO full tier (2500 x 96,
 # patience 60, --wall-limit 6h).
 set -e
@@ -15,10 +15,6 @@ $PY marl/train_maddpg.py --data-dir data/dn-data-v4 --device auto \
 echo "[S3] QMIX (3h tier)"
 $PY marl/train_qmix.py --algo qmix --data-dir data/dn-data-v4 --device auto \
     --output output/e33_v4_qmix 2>&1 | tee logs/e33_v4_qmix_train.log
-
-echo "[S3] MAPPO (3h tier)"
-$PY marl/train_mappo.py --data-dir data/dn-data-v4 --device auto \
-    --output output/e33_v4_mappo 2>&1 | tee logs/e33_v4_mappo_train.log
 
 echo "[S3] EC-MAPPO (full tier <=6h)"
 $PY marl/train.py --data-dir data/dn-data-v4 --iters 2500 \

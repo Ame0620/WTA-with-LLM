@@ -1,0 +1,23 @@
+{
+  "locked_tier": "D",
+  "config": { "iters": 500, "episodes_per_iter": 64, "patience": 20, "eval_every": 25 },
+  "decision_rule": "sigma-normalized worst-arm rate x iters x 24 arms <= wall ceiling 27.6h (= 24h x 1.15)",
+  "smoke_measurements": {
+    "(1,1,1)@128eps/50iters": { "wall_sec": 381, "sec_per_iter": 7.62, "log": "logs/s3_smoke_111.log" },
+    "(0,0,0)@128eps/50iters": { "wall_sec": 341, "sec_per_iter": 6.82, "log": "logs/s3_smoke_000.log" },
+    "(1,1,1)@64eps/50iters": { "wall_sec": 224, "sec_per_iter": 4.48, "log": "logs/s3_smoke_111e64.log" }
+  },
+  "tier_upper_bounds_24_arms": {
+    "A (3000x128, pat 60)": 152.4,
+    "B (1500x128, pat 40)": 76.1,
+    "C (1000x64, pat 30)": 29.9,
+    "D (500x64, pat 20)": 14.9
+  },
+  "e49_upper_bound_h": 14.93,
+  "e50_planned_bound_h": 7.0,
+  "e51_planned_bound_h": 0.2,
+  "total_planned_bound_h": 22.1,
+  "wall_ceiling_h": 27.6,
+  "notes": "Tier D selected: A/B/C exceed the 27.6h ceiling under the sigma-normalized worst-arm upper bound (fixed four tiers only, nearest-down rule, no custom tier). Early stopping (patience 20) gives additional headroom; smoke runs show no NaN/illegal-action anomalies and val curves descend normally. Machine: macOS MPS, torch 2.13.0, single-process sequential arms.",
+  "locked_at": "2026-09-20T16:20:00+08:00"
+}

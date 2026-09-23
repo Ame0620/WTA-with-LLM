@@ -1,5 +1,0 @@
-[pipeline] START s3_mappo (attempt 1): /opt/anaconda3/envs/wta/bin/python marl/train_mappo.py --data-dir data/dn-data-v5 --patience 48 --output output/e43_v5_mappo
-[pipeline] DONE s3_mappo (rc=0)
-[pipeline] START s3_qmix (attempt 1): /opt/anaconda3/envs/wta/bin/python marl/train_qmix.py --data-dir data/dn-data-v5 --patience 48 --output output/e43_v5_qmix
-[pipeline] DONE s3_qmix (rc=0)
-[pipeline] START s3_maddpg (attempt 1): /opt/anaconda3/envs/wta/bin/python marl/train_maddpg.py --data-dir data/dn-data-v5 --patience 48 --output output/e43_v5_maddpg
