@@ -14,19 +14,12 @@ __pycache__/
 !DN-WTA_v3_数据集说明.md
 !DN-WTA_v4_数据集说明.md
 !项目总结.md
-!实验报告_MARL学习策略.md
-!实验报告_MARL核心框架.md
-!实验报告_传统3算法.md
 !评价指标体系_精简三层版.md
 !DN-WTA_v5_数据集说明.md
 !对比实验说明.md
 !实验报告_v3对比实验总表.md
 !EC-MAPPO三模块界定.md
 !EC-MAPPO项目事实.md
-!v4全算法实验-需求文档.md
-!v5全算法实验-需求文档.md
-!需求文档_v3消融实验.md
-!需求文档_v3消融实验_第二轮.md
 !related-work初稿.md
 !output/**/*.md
 !data/*/MANIFEST.md
@@ -48,9 +41,10 @@ output/**/*.sol
 output/**/*.txt
 output/tmp/
 
-# _rerun_backup 中的 v5 汇总报告副本（与根目录已排除的正式报告同内容）不上传
+# 汇总类实验报告副本不上传（正式报告仅保留 实验报告_v3对比实验总表.md）
 output/_rerun_backup_0919/实验报告_v5全算法总览.md
 output/_rerun_backup_0919/实验报告_v5_定稿备份.md
+output/e36_v4_summary/实验报告_v4全算法总览.md
 
 # logs：运行日志与运行时状态文件不上传（仅保留汇总 json 与脚本）
 logs/*.log
